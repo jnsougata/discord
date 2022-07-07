@@ -11,6 +11,7 @@ func main() {
 	b := bot.New(33283)
 	b.OnMessage(OnMessage)
 	b.OnReady(OnReady)
+	b.OnInteraction(OnInteraction)
 	b.Run(os.Getenv("DISCORD_TOKEN"))
 }
 
@@ -19,4 +20,7 @@ func OnMessage(message *types.Message) {
 }
 func OnReady() {
 	log.Println("[-------- READY --------]")
+}
+func OnInteraction(interaction *types.Interaction) {
+	log.Println(interaction)
 }

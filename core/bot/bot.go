@@ -26,3 +26,7 @@ func (bot *Bot) OnMessage(handler func(message *types.Message)) {
 func (bot *Bot) OnReady(handler func()) {
 	bot.core.AddHandler("READY", handler)
 }
+
+func (bot *Bot) OnInteraction(handler func(interaction *types.Interaction)) {
+	bot.core.AddHandler("INTERACTION_CREATE", handler)
+}

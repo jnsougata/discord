@@ -88,11 +88,18 @@ func (c *Client) Run(token string) {
 			c.sendIdentification(conn, token, c.intent)
 			go c.keepAlive(conn, int(interval))
 		}
-		if wsmsg.Event == "MESSAGE_CREATE" {
-			go events["MESSAGE_CREATE"].(func(message *types.Message))(types.ToMessage(wsmsg.Data))
-		}
-		if wsmsg.Event == "READY" {
-			go events["READY"].(func())()
-		}
+		eventHandler(wsmsg.Event, wsmsg.Data)
+	}
+}
+
+func eventHandler(event string, data map[string]interface{}) {
+	if event == "MESSAGE_CREATE" {
+		go events[event].(func(message *types.Message))(types.NewMessage(data))
+	}
+	if event == "READY" {
+		go events[event].(func())()
+	}
+	if event == "INTERACTION_CREATE" {
+		go events[event].(func(interaction *types.Interaction))(types.NewInteraction(data))
 	}
 }
