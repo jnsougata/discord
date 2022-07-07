@@ -2,7 +2,7 @@ package client
 
 import (
 	"encoding/json"
-	"github.com/disgo/types"
+	"github.com/disgo/core/types"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"

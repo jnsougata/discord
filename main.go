@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/disgo/bot"
-	"github.com/disgo/types"
+	"github.com/disgo/core/bot"
+	"github.com/disgo/core/types"
 	"log"
 	"os"
 )
