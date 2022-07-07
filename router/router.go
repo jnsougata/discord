@@ -1,4 +1,4 @@
-package utils
+package router
 
 import (
 	"bytes"
@@ -23,4 +23,8 @@ func (obj *Router) Request() (*http.Response, error) {
 	r.Header.Set("Authorization", "Bot "+obj.Token)
 	client := &http.Client{}
 	return client.Do(r)
+}
+
+func New(method string, path string, body map[string]interface{}, token string) *Router {
+	return &Router{Token: token, Path: path, Body: body, Method: method}
 }
