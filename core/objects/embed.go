@@ -1,4 +1,4 @@
-package types
+package objects
 
 type Embed struct {
 	Title       string `json:"title"`
@@ -7,7 +7,8 @@ type Embed struct {
 	Url         string `json:"url"`
 	Timestamp   string `json:"timestamp"`
 	Color       int    `json:"color"`
-	Footer      struct {
+
+	Footer struct {
 		Text string `json:"text"`
 		Icon string `json:"icon_url"`
 	} `json:"footer"`

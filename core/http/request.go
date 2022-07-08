@@ -1,4 +1,4 @@
-package router
+package http
 
 import (
 	"bytes"
@@ -16,13 +16,14 @@ type Router struct {
 	Method string
 }
 
-func (obj *Router) Request() (*http.Response, error) {
+func (obj *Router) Request() *http.Response {
 	bodyByte, _ := json.Marshal(obj.Body)
 	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(bodyByte)))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Authorization", "Bot "+obj.Token)
 	client := &http.Client{}
-	return client.Do(r)
+	resp, _ := client.Do(r)
+	return resp
 }
 
 func New(method string, path string, body map[string]interface{}, token string) *Router {

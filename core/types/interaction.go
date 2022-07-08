@@ -2,6 +2,9 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/disgo/core/http"
+	"github.com/disgo/core/objects"
 	"log"
 	"time"
 )
@@ -43,7 +46,7 @@ type Interaction struct {
 	ChannelID string `json:"channel_id"`
 }
 
-func NewInteraction(payload interface{}) *Interaction {
+func BuildInteraction(payload interface{}) *Interaction {
 	i := &Interaction{}
 	data, _ := json.Marshal(payload)
 	err := json.Unmarshal(data, i)
@@ -51,4 +54,10 @@ func NewInteraction(payload interface{}) *Interaction {
 		log.Fatal(err)
 	}
 	return i
+}
+
+func (i *Interaction) Respond(message *objects.InteractionMessage) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	r := http.New("POST", path, message.ToBody(), "")
+	go r.Request()
 }

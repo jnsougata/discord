@@ -94,12 +94,12 @@ func (c *Client) Run(token string) {
 
 func eventHandler(event string, data map[string]interface{}) {
 	if event == "MESSAGE_CREATE" {
-		go events[event].(func(message *types.Message))(types.NewMessage(data))
+		go events[event].(func(message *types.Message))(types.BuildMessage(data))
 	}
 	if event == "READY" {
 		go events[event].(func())()
 	}
 	if event == "INTERACTION_CREATE" {
-		go events[event].(func(interaction *types.Interaction))(types.NewInteraction(data))
+		go events[event].(func(interaction *types.Interaction))(types.BuildInteraction(data))
 	}
 }
