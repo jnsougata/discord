@@ -2,7 +2,6 @@ package objects
 
 type Embed struct {
 	Title       string `json:"title"`
-	Type        string `json:"type"`
 	Description string `json:"description"`
 	Url         string `json:"url"`
 	Timestamp   string `json:"timestamp"`

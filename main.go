@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/disgo/core/bot"
 	"github.com/disgo/core/objects"
 	"github.com/disgo/core/types"
@@ -21,7 +23,34 @@ func OnMessage(message *types.Message) {
 }
 func OnReady() {
 	log.Println("[-------- READY --------]")
+	newCom := &objects.SlashCommand{
+		Name:         "ping",
+		Description:  "shows bot latency",
+		DMPermission: true,
+		TestGuildId:  123456,
+		Options: []map[string]interface{}{
+			objects.Option{}.String(
+				"name",
+				"type of the component to show ping for",
+				false,
+				0,
+				100,
+				false,
+			),
+			objects.Option{}.Integer(
+				"count",
+				"number of pings to send",
+				false,
+				1,
+				100,
+				false,
+			),
+		},
+	}
+	v, _ := json.MarshalIndent(newCom, "", "  ")
+	fmt.Println(string(v))
 }
+
 func OnInteraction(interaction *types.Interaction) {
 	interaction.Respond(
 		&objects.InteractionMessage{

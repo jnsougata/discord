@@ -30,3 +30,7 @@ func (bot *Bot) OnReady(handler func()) {
 func (bot *Bot) OnInteraction(handler func(interaction *types.Interaction)) {
 	bot.core.AddHandler("INTERACTION_CREATE", handler)
 }
+
+func (bot *Bot) CommandQueue(commands ...any) {
+	bot.core.RegistrationQueue(commands)
+}

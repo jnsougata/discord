@@ -11,6 +11,7 @@ import (
 )
 
 var events = map[string]interface{}{}
+var commands []interface{}
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -64,6 +65,10 @@ func (c *Client) sendIdentification(conn *websocket.Conn, Token string, intent i
 
 func (c *Client) AddHandler(name string, fn interface{}) {
 	events[name] = fn
+}
+
+func (c *Client) RegistrationQueue(apcs ...any) {
+	commands = append(commands, apcs...)
 }
 
 func (c *Client) Run(token string) {
