@@ -11,42 +11,28 @@ import (
 
 func main() {
 	b := bot.New(33283)
+
 	b.AddCommand(
+		gocmdHandler,
 		objects.SlashCommand{
 			Name:         "gocmd",
 			Description:  "sample disgo command",
 			DMPermission: true,
 			TestGuildId:  877399405056102431,
-			Options: []objects.JSONMap{
-				objects.Option{}.String(
-					"string",
-					"string type option",
-					true,
-					0,
-					10,
-					false,
-				),
-			},
 		},
 	)
-	b.OnMessage(OnMessage)
 	b.OnReady(OnReady)
-	b.OnInteraction(OnInteraction)
 	b.Run(os.Getenv("DISCORD_TOKEN"))
 }
 
-func OnMessage(bot *types.User, message *types.Message) {
-	log.Println(message.Content)
-}
-
 func OnReady(bot *types.User) {
-	log.Println(fmt.Sprintf("[-------- (%s#%s) --------]", bot.Username, bot.Discriminator))
+	log.Println(fmt.Sprintf("Logged in as %s#%s (ID: %s)", bot.Username, bot.Discriminator, bot.ID))
+	log.Println("---------")
 }
 
-func OnInteraction(bot *types.User, interaction *types.Interaction) {
+func gocmdHandler(bot *types.User, interaction *types.Interaction) {
 	interaction.Respond(
 		&objects.InteractionMessage{
-			Content: "Hello GoLang!",
 			Embeds: []objects.Embed{
 				{
 					Title:       "disgo",

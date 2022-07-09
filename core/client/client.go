@@ -3,12 +3,14 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/disgo/core/objects"
 	"github.com/disgo/core/router"
 	"github.com/disgo/core/types"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -18,7 +20,7 @@ type raw struct {
 }
 
 var events = map[string]interface{}{}
-var queue []map[string]interface{}
+var queue []interface{}
 var commands = map[string]interface{}{}
 var bot *types.User
 var execLocked = true
@@ -75,40 +77,36 @@ func (c *Client) AddHandler(name string, fn interface{}) {
 	events[name] = fn
 }
 
-func (c *Client) Queue(apc any) {
-	com, _ := json.Marshal(apc)
-	m := map[string]interface{}{}
-	err := json.Unmarshal(com, &m)
+func (c *Client) Queue(apc any, handler interface{}) {
+	queue = append(queue, []interface{}{apc, handler})
+}
+
+func registerCommand(com any, token string, applicationId string, handler interface{}) {
+	typePrefix := ""
+	if reflect.TypeOf(com) == reflect.TypeOf(objects.SlashCommand{}) {
+		typePrefix = "SLASH_"
+	}
+	c, _ := json.Marshal(com)
+	cmd := map[string]interface{}{}
+	err := json.Unmarshal(c, &cmd)
 	if err != nil {
 		panic(err)
 	}
-	queue = append(queue, m)
-}
-
-func registerCommand(com map[string]interface{}, token string, applicationId string) {
-	guildId := com["guild_id"].(string)
+	guildId := cmd["guild_id"].(string)
+	qualifiedName := ""
+	path := ""
 	if guildId != "" {
-		qualifiedName := "GUILD_" + com["name"].(string) + "_" + guildId
-		commands[qualifiedName] = nil
-		delete(com, "guild_id")
-		r := router.New(
-			"POST",
-			fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId),
-			com,
-			token,
-		)
-		r.Request()
+		qualifiedName = typePrefix + "GUILD_" + cmd["name"].(string) + "_" + guildId
+		path = fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId)
+		commands[qualifiedName] = handler
+		delete(cmd, "guild_id")
 	} else {
-		qualifiedName := "GLOBAL_" + com["name"].(string)
-		commands[qualifiedName] = nil
-		r := router.New(
-			"POST",
-			fmt.Sprintf("/applications/%s/commands", applicationId),
-			com,
-			token,
-		)
-		r.Request()
+		qualifiedName = typePrefix + "GLOBAL_" + cmd["name"].(string)
+		commands[qualifiedName] = handler
+		path = fmt.Sprintf("/applications/%s/commands", applicationId)
 	}
+	r := router.New("POST", path, cmd, token)
+	r.Request()
 }
 
 func (c *Client) Run(token string) {
@@ -136,7 +134,12 @@ func (c *Client) Run(token string) {
 				panic(err)
 			}
 			for _, cmd := range queue {
-				go registerCommand(cmd, token, rc.Application["id"].(string))
+				go registerCommand(
+					cmd.([]any)[0].(objects.SlashCommand),
+					token,
+					rc.Application["id"].(string),
+					cmd.([]any)[1],
+				)
 			}
 		}
 		if wsmsg.Op == 10 {
@@ -159,16 +162,20 @@ func eventHandler(event string, data map[string]interface{}) {
 		return
 	}
 	if event == "MESSAGE_CREATE" {
-		go events[event].(func(bot *types.User, message *types.Message))(bot, types.BuildMessage(data))
+		if _, ok := events[event]; ok {
+			go events[event].(func(bot *types.User, message *types.Message))(bot, types.BuildMessage(data))
+		}
 	}
 	if event == "INTERACTION_CREATE" {
 		i := types.BuildInteraction(data)
-		go events[event].(func(bot *types.User, interaction *types.Interaction))(bot, i)
 		if i.Type == 1 {
 			// interaction ping
 		}
 		if i.Type == 2 {
-			// handle application command interaction
+			qual := buildQualifiedName(i.GuildID, i.Data.Name, "SLASH")
+			if _, ok := commands[qual]; ok {
+				go commands[qual].(func(bot *types.User, interaction *types.Interaction))(bot, i)
+			}
 		}
 		if i.Type == 3 {
 			// handle component interaction
@@ -180,4 +187,11 @@ func eventHandler(event string, data map[string]interface{}) {
 			// handle modal submit interaction
 		}
 	}
+}
+
+func buildQualifiedName(guild string, cmdName string, cmdType string) string {
+	if guild == "" {
+		return cmdType + "_GLOBAL_" + cmdName
+	}
+	return cmdType + "_GUILD_" + cmdName + "_" + guild
 }
