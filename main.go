@@ -28,20 +28,12 @@ func OnReady() {
 		Description:  "shows bot latency",
 		DMPermission: true,
 		TestGuildId:  123456,
-		Options: []map[string]interface{}{
+		Options: []objects.JSONMap{
 			objects.Option{}.String(
 				"name",
 				"type of the component to show ping for",
 				false,
 				0,
-				100,
-				false,
-			),
-			objects.Option{}.Integer(
-				"count",
-				"number of pings to send",
-				false,
-				1,
 				100,
 				false,
 			),
