@@ -3,8 +3,8 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/disgo/core/http"
 	"github.com/disgo/core/objects"
+	"github.com/disgo/core/router"
 	"log"
 	"time"
 )
@@ -58,6 +58,6 @@ func BuildInteraction(payload interface{}) *Interaction {
 
 func (i *Interaction) Respond(message *objects.InteractionMessage) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := http.New("POST", path, message.ToBody(), "")
+	r := router.New("POST", path, message.ToBody(), "")
 	go r.Request()
 }

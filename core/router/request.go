@@ -1,4 +1,4 @@
-package http
+package router
 
 import (
 	"bytes"
@@ -22,7 +22,10 @@ func (obj *Router) Request() *http.Response {
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Authorization", "Bot "+obj.Token)
 	client := &http.Client{}
-	resp, _ := client.Do(r)
+	resp, err := client.Do(r)
+	if err != nil {
+		panic(err)
+	}
 	return resp
 }
 

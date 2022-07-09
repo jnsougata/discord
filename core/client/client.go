@@ -2,6 +2,8 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/disgo/core/router"
 	"github.com/disgo/core/types"
 	"github.com/gorilla/websocket"
 	"io"
@@ -11,7 +13,8 @@ import (
 )
 
 var events = map[string]interface{}{}
-var commands []interface{}
+var queue []map[string]interface{}
+var commands = map[string]interface{}{}
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -67,8 +70,40 @@ func (c *Client) AddHandler(name string, fn interface{}) {
 	events[name] = fn
 }
 
-func (c *Client) RegistrationQueue(apcs ...any) {
-	commands = append(commands, apcs...)
+func (c *Client) Queue(apc any) {
+	com, _ := json.Marshal(apc)
+	m := map[string]interface{}{}
+	err := json.Unmarshal(com, &m)
+	if err != nil {
+		panic(err)
+	}
+	queue = append(queue, m)
+}
+
+func registerCommand(com map[string]interface{}, token string, applicationId string) {
+	guildId := com["guild_id"].(string)
+	if guildId != "" {
+		qualifiedName := "GUILD_" + com["name"].(string) + "_" + guildId
+		commands[qualifiedName] = nil
+		delete(com, "guild_id")
+		r := router.New(
+			"POST",
+			fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId),
+			com,
+			token,
+		)
+		r.Request()
+	} else {
+		qualifiedName := "GLOBAL_" + com["name"].(string)
+		commands[qualifiedName] = nil
+		r := router.New(
+			"POST",
+			fmt.Sprintf("/applications/%s/commands", applicationId),
+			com,
+			token,
+		)
+		r.Request()
+	}
 }
 
 func (c *Client) Run(token string) {
@@ -87,6 +122,21 @@ func (c *Client) Run(token string) {
 		err := conn.ReadJSON(&wsmsg)
 		if err != nil {
 			log.Fatal(err)
+		}
+		type rawClient struct {
+			SessionId   string                 `json:"session_id"`
+			Application map[string]interface{} `json:"application"`
+		}
+		if wsmsg.Event == "READY" {
+			var rc rawClient
+			b, _ := json.Marshal(wsmsg.Data)
+			err = json.Unmarshal(b, &rc)
+			if err != nil {
+				panic(err)
+			}
+			for _, cmd := range queue {
+				go registerCommand(cmd, token, rc.Application["id"].(string))
+			}
 		}
 		if wsmsg.Op == 10 {
 			interval := wsmsg.Data["heartbeat_interval"].(float64)

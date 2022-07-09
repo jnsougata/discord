@@ -2,6 +2,7 @@ package bot
 
 import (
 	"github.com/disgo/core/client"
+	"github.com/disgo/core/objects"
 	"github.com/disgo/core/types"
 )
 
@@ -31,6 +32,6 @@ func (bot *Bot) OnInteraction(handler func(interaction *types.Interaction)) {
 	bot.core.AddHandler("INTERACTION_CREATE", handler)
 }
 
-func (bot *Bot) CommandQueue(commands ...any) {
-	bot.core.RegistrationQueue(commands)
+func (bot *Bot) AddCommand(command objects.SlashCommand) {
+	bot.core.Queue(command)
 }
