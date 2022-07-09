@@ -20,6 +20,8 @@ type raw struct {
 var events = map[string]interface{}{}
 var queue []map[string]interface{}
 var commands = map[string]interface{}{}
+var bot *types.User
+var execLocked = true
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -143,19 +145,25 @@ func (c *Client) Run(token string) {
 			go c.keepAlive(conn, int(interval))
 		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
+		if wsmsg.Event == "READY" {
+			bot = types.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
+			execLocked = false
+			go events[wsmsg.Event].(func(bot *types.User))(bot)
+		}
+
 	}
 }
 
 func eventHandler(event string, data map[string]interface{}) {
-	if event == "MESSAGE_CREATE" {
-		go events[event].(func(message *types.Message))(types.BuildMessage(data))
+	if execLocked == true {
+		return
 	}
-	if event == "READY" {
-		go events[event].(func())()
+	if event == "MESSAGE_CREATE" {
+		go events[event].(func(bot *types.User, message *types.Message))(bot, types.BuildMessage(data))
 	}
 	if event == "INTERACTION_CREATE" {
 		i := types.BuildInteraction(data)
-		go events[event].(func(interaction *types.Interaction))(i)
+		go events[event].(func(bot *types.User, interaction *types.Interaction))(bot, i)
 		if i.Type == 1 {
 			// interaction ping
 		}

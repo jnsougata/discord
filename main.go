@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/disgo/core/bot"
 	"github.com/disgo/core/objects"
 	"github.com/disgo/core/types"
@@ -34,15 +35,15 @@ func main() {
 	b.Run(os.Getenv("DISCORD_TOKEN"))
 }
 
-func OnMessage(message *types.Message) {
+func OnMessage(bot *types.User, message *types.Message) {
 	log.Println(message.Content)
 }
 
-func OnReady() {
-	log.Println("[-------- READY --------]")
+func OnReady(bot *types.User) {
+	log.Println(fmt.Sprintf("[-------- (%s#%s) --------]", bot.Username, bot.Discriminator))
 }
 
-func OnInteraction(interaction *types.Interaction) {
+func OnInteraction(bot *types.User, interaction *types.Interaction) {
 	interaction.Respond(
 		&objects.InteractionMessage{
 			Content: "Hello GoLang!",
