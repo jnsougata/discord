@@ -15,7 +15,7 @@ func main() {
 			Name:         "gocmd",
 			Description:  "sample disgo command",
 			DMPermission: true,
-			TestGuildId:  "877399405056102431",
+			TestGuildId:  877399405056102431,
 			Options: []objects.JSONMap{
 				objects.Option{}.String(
 					"string",
@@ -49,15 +49,9 @@ func OnInteraction(interaction *types.Interaction) {
 			Embeds: []objects.Embed{
 				{
 					Title:       "disgo",
-					Description: "testing disgo interaction",
-					Color:       0x00FFFF,
-				},
-				{
-					Title:       interaction.Member.User.Username,
-					Description: "maintainer disgo interaction",
+					Description: "testing disgo interaction & slash commands",
 					Color:       0x00FFFF,
 				},
 			},
-			Flags: 1 << 6,
 		})
 }

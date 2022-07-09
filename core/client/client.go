@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+type raw struct {
+	SessionId   string                 `json:"session_id"`
+	Application map[string]interface{} `json:"application"`
+}
+
 var events = map[string]interface{}{}
 var queue []map[string]interface{}
 var commands = map[string]interface{}{}
@@ -27,9 +32,7 @@ func (c *Client) getGateway() string {
 	return payload["url"].(string) + "?v=10&encoding=json"
 }
 
-type Client struct {
-	intent int
-}
+type Client struct{ intent int }
 
 func New(intent int) *Client {
 	return &Client{intent: intent}
@@ -123,12 +126,8 @@ func (c *Client) Run(token string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		type rawClient struct {
-			SessionId   string                 `json:"session_id"`
-			Application map[string]interface{} `json:"application"`
-		}
 		if wsmsg.Event == "READY" {
-			var rc rawClient
+			var rc raw
 			b, _ := json.Marshal(wsmsg.Data)
 			err = json.Unmarshal(b, &rc)
 			if err != nil {
@@ -155,6 +154,22 @@ func eventHandler(event string, data map[string]interface{}) {
 		go events[event].(func())()
 	}
 	if event == "INTERACTION_CREATE" {
-		go events[event].(func(interaction *types.Interaction))(types.BuildInteraction(data))
+		i := types.BuildInteraction(data)
+		go events[event].(func(interaction *types.Interaction))(i)
+		if i.Type == 1 {
+			// interaction ping
+		}
+		if i.Type == 2 {
+			// handle application command interaction
+		}
+		if i.Type == 3 {
+			// handle component interaction
+		}
+		if i.Type == 4 {
+			// handle auto-complete interaction
+		}
+		if i.Type == 5 {
+			// handle modal submit interaction
+		}
 	}
 }

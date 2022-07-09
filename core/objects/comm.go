@@ -8,7 +8,7 @@ type SlashCommand struct {
 	Options                  []JSONMap `json:"options"`
 	DefaultMemberPermissions int       `json:"default_member_permissions"`
 	DMPermission             bool      `json:"dm_permission"`
-	TestGuildId              string    `json:"guild_id"`
+	TestGuildId              int64     `json:"guild_id,string"`
 }
 
 type Option struct{}

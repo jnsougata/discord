@@ -12,8 +12,7 @@ type Bot struct {
 }
 
 func New(intent int) *Bot {
-	c := client.New(intent)
-	return &Bot{intent: intent, core: c}
+	return &Bot{intent: intent, core: client.New(intent)}
 }
 
 func (bot *Bot) Run(token string) {
