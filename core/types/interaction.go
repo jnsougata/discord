@@ -56,8 +56,40 @@ func BuildInteraction(payload interface{}) *Interaction {
 	return i
 }
 
-func (i *Interaction) Respond(message *objects.InteractionMessage) {
+func (i *Interaction) SendResponse(message *objects.InteractionMessage) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
 	r := router.New("POST", path, message.ToBody(), "")
+	go r.Request()
+}
+
+func (i *Interaction) Ack() {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	r := router.New("POST", path, map[string]interface{}{"type": 1}, "")
+	go r.Request()
+}
+
+func (i *Interaction) Defer(ephemeral bool) {
+	payload := map[string]interface{}{"type": 5}
+	if ephemeral {
+		payload["data"] = map[string]interface{}{"flags": 1 << 6}
+	}
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	r := router.New("POST", path, payload, "")
+	go r.Request()
+}
+
+func (i *Interaction) SendModal(modal *objects.Modal) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	r := router.New("POST", path, modal.ToBody(), "")
+	go r.Request()
+}
+
+func (i *Interaction) SendAutoComplete(choices ...*objects.Choice) {
+	payload := map[string]interface{}{
+		"type": 8,
+		"data": map[string]interface{}{"choices": choices},
+	}
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	r := router.New("POST", path, payload, "")
 	go r.Request()
 }

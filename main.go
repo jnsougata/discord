@@ -31,7 +31,7 @@ func OnReady(bot *types.User) {
 }
 
 func gocmdHandler(bot *types.User, interaction *types.Interaction) {
-	interaction.Respond(
+	interaction.SendResponse(
 		&objects.InteractionMessage{
 			Embeds: []objects.Embed{
 				{
