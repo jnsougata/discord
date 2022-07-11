@@ -6,44 +6,23 @@ import (
 	"github.com/disgo/core/objects"
 	"github.com/disgo/core/router"
 	"log"
-	"time"
 )
 
 type Interaction struct {
-	Type   int    `json:"type"`
-	Token  string `json:"token"`
-	Member struct {
-		User struct {
-			ID            string `json:"id"`
-			Username      string `json:"username"`
-			Avatar        string `json:"avatar"`
-			Discriminator string `json:"discriminator"`
-			PublicFlags   int    `json:"public_flags"`
-		} `json:"user"`
-		Roles        []string    `json:"roles"`
-		PremiumSince interface{} `json:"premium_since"`
-		Permissions  string      `json:"permissions"`
-		Pending      bool        `json:"pending"`
-		Nick         interface{} `json:"nick"`
-		Mute         bool        `json:"mute"`
-		JoinedAt     time.Time   `json:"joined_at"`
-		IsPending    bool        `json:"is_pending"`
-		Deaf         bool        `json:"deaf"`
-	} `json:"member"`
-	ID             string `json:"id"`
-	GuildID        string `json:"guild_id"`
-	AppPermissions string `json:"app_permissions"`
-	GuildLocale    string `json:"guild_locale"`
-	Locale         string `json:"locale"`
-	Data           struct {
-		Options []struct {
-			Name  string `json:"name"`
-			Value string `json:"value"`
-		} `json:"options"`
-		Name string `json:"name"`
-		ID   string `json:"id"`
-	} `json:"data"`
-	ChannelID string `json:"channel_id"`
+	ID             string      `json:"id"`
+	ApplicationID  string      `json:"application_id"`
+	Type           int         `json:"type"`
+	Data           interface{} `json:"data"`
+	GuildID        string      `json:"guild_id"`
+	ChannelID      string      `json:"channel_id"`
+	Member         interface{} `json:"member"`
+	User           *User       `json:"user"`
+	Token          string      `json:"token"`
+	Version        int         `json:"version"`
+	Message        interface{} `json:"message"`
+	AppPermissions string      `json:"app_permissions"`
+	Locale         string      `json:"locale"`
+	GuildLocale    string      `json:"guild_locale"`
 }
 
 func BuildInteraction(payload interface{}) *Interaction {
@@ -90,6 +69,16 @@ func (i *Interaction) SendAutoComplete(choices ...*objects.Choice) {
 		"data": map[string]interface{}{"choices": choices},
 	}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	r := router.New("POST", path, payload, "")
+	go r.Request()
+}
+
+func (i *Interaction) SendFollowup(choices ...*objects.Choice) {
+	payload := map[string]interface{}{
+		"type": 8,
+		"data": map[string]interface{}{"choices": choices},
+	}
+	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)
 	r := router.New("POST", path, payload, "")
 	go r.Request()
 }
