@@ -1,4 +1,4 @@
-package objects
+package models
 
 type InteractionMessage struct {
 	Content string  `json:"content"`
@@ -12,7 +12,7 @@ type InteractionMessage struct {
 
 func (i *InteractionMessage) ToBody() map[string]interface{} {
 	return map[string]interface{}{
-		"type": 4,
+		"kind": 4,
 		"data": map[string]interface{}{
 			"content": i.Content,
 			"embeds":  i.Embeds,

@@ -1,4 +1,4 @@
-package objects
+package models
 
 type JSONMap map[string]interface{}
 
@@ -17,7 +17,7 @@ func (o Option) String(
 	name string, description string, required bool,
 	minLength int, maxLength int, autoComplete bool, choices ...Choice) JSONMap {
 	return JSONMap{
-		"type":          3,
+		"kind":          3,
 		"name":          name,
 		"description":   description,
 		"required":      required,
@@ -32,7 +32,7 @@ func (o Option) Integer(
 	name string, description string, required bool,
 	minValue int64, maxValue int64, autoComplete bool, choices ...Choice) JSONMap {
 	return JSONMap{
-		"type":          4,
+		"kind":          4,
 		"name":          name,
 		"description":   description,
 		"required":      required,
@@ -47,7 +47,7 @@ func (o Option) Number(
 	name string, description string, required bool,
 	minValue float64, maxValue float64, autoComplete bool, choices ...Choice) JSONMap {
 	return JSONMap{
-		"type":          10,
+		"kind":          10,
 		"name":          name,
 		"description":   description,
 		"required":      required,
@@ -61,7 +61,7 @@ func (o Option) Number(
 func (o Option) Boolean(
 	name string, description string, required bool) JSONMap {
 	return JSONMap{
-		"type":        5,
+		"kind":        5,
 		"name":        name,
 		"description": description,
 		"required":    required,
@@ -71,7 +71,7 @@ func (o Option) Boolean(
 func (o Option) User(
 	name string, description string, required bool) JSONMap {
 	return JSONMap{
-		"type":        6,
+		"kind":        6,
 		"name":        name,
 		"description": description,
 		"required":    required,
@@ -81,7 +81,7 @@ func (o Option) User(
 func (o Option) Channel(
 	name string, description string, required bool, channelTypes ...int64) JSONMap {
 	return JSONMap{
-		"type":          7,
+		"kind":          7,
 		"name":          name,
 		"description":   description,
 		"required":      required,
@@ -92,7 +92,7 @@ func (o Option) Channel(
 func (o Option) Role(
 	name string, description string, required bool) JSONMap {
 	return JSONMap{
-		"type":        8,
+		"kind":        8,
 		"name":        name,
 		"description": description,
 		"required":    required,
@@ -102,7 +102,7 @@ func (o Option) Role(
 func (o Option) Mentionable(
 	name string, description string, required bool) JSONMap {
 	return JSONMap{
-		"type":        9,
+		"kind":        9,
 		"name":        name,
 		"description": description,
 		"required":    required,
@@ -112,7 +112,7 @@ func (o Option) Mentionable(
 func (o Option) Attachment(
 	name string, description string, required bool) JSONMap {
 	return JSONMap{
-		"type":        11,
+		"kind":        11,
 		"name":        name,
 		"description": description,
 		"required":    required,

@@ -3,9 +3,9 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/disgo/core/objects"
+	"github.com/disgo/core/kind"
+	"github.com/disgo/core/models"
 	"github.com/disgo/core/router"
-	"github.com/disgo/core/types"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
@@ -22,7 +22,7 @@ type raw struct {
 var events = map[string]interface{}{}
 var queue []interface{}
 var commands = map[string]interface{}{}
-var bot *types.User
+var bot *kind.User
 var execLocked = true
 
 func (c *Client) getGateway() string {
@@ -83,7 +83,7 @@ func (c *Client) Queue(apc any, handler interface{}) {
 
 func registerCommand(com any, token string, applicationId string, handler interface{}) {
 	typePrefix := ""
-	if reflect.TypeOf(com) == reflect.TypeOf(objects.SlashCommand{}) {
+	if reflect.TypeOf(com) == reflect.TypeOf(models.SlashCommand{}) {
 		typePrefix = "SLASH_"
 	}
 	c, _ := json.Marshal(com)
@@ -135,7 +135,7 @@ func (c *Client) Run(token string) {
 			}
 			for _, cmd := range queue {
 				go registerCommand(
-					cmd.([]any)[0].(objects.SlashCommand),
+					cmd.([]any)[0].(models.SlashCommand),
 					token,
 					rc.Application["id"].(string),
 					cmd.([]any)[1],
@@ -149,9 +149,9 @@ func (c *Client) Run(token string) {
 		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
 		if wsmsg.Event == "READY" {
-			bot = types.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
+			bot = kind.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
 			execLocked = false
-			go events[wsmsg.Event].(func(bot *types.User))(bot)
+			go events[wsmsg.Event].(func(bot *kind.User))(bot)
 		}
 
 	}
@@ -163,18 +163,18 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 	if event == "MESSAGE_CREATE" {
 		if _, ok := events[event]; ok {
-			go events[event].(func(bot *types.User, message *types.Message))(bot, types.BuildMessage(data))
+			go events[event].(func(bot *kind.User, message *kind.Message))(bot, kind.BuildMessage(data))
 		}
 	}
 	if event == "INTERACTION_CREATE" {
-		i := types.BuildInteraction(data)
+		i := kind.BuildInteraction(data)
 		if i.Type == 1 {
 			// interaction ping
 		}
 		if i.Type == 2 {
-			qual := buildQualifiedName(i.GuildID, i.Data.Name, "SLASH")
-			if _, ok := commands[qual]; ok {
-				go commands[qual].(func(bot *types.User, interaction *types.Interaction))(bot, i)
+			mapName := buildQualifiedName(i.GuildID, i.Data.Name, "SLASH")
+			if _, ok := commands[mapName]; ok {
+				go commands[mapName].(func(bot *kind.User, interaction *kind.Interaction))(bot, i)
 			}
 		}
 		if i.Type == 3 {

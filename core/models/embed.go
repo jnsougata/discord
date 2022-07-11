@@ -1,4 +1,4 @@
-package objects
+package models
 
 type Embed struct {
 	Title       string `json:"title"`

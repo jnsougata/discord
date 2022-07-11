@@ -1,4 +1,4 @@
-package objects
+package models
 
 type Modal struct {
 	//TODO
@@ -6,7 +6,7 @@ type Modal struct {
 
 func (i *Modal) ToBody() map[string]interface{} {
 	return map[string]interface{}{
-		"type": 9,
+		"kind": 9,
 		"data": map[string]interface{}{},
 	}
 }
