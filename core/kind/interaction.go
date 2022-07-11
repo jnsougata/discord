@@ -11,7 +11,7 @@ import (
 type InteractionData struct {
 	Id       string                 `json:"id"`
 	Name     string                 `json:"name"`
-	Type     int                    `json:"kind"`
+	Type     int                    `json:"type"`
 	Resolved map[string]interface{} `json:"resolved"`
 	Options  map[string]interface{} `json:"options"`
 
@@ -25,7 +25,7 @@ type InteractionData struct {
 type Interaction struct {
 	ID             string           `json:"id"`
 	ApplicationID  string           `json:"application_id"`
-	Type           int              `json:"kind"`
+	Type           int              `json:"type"`
 	Data           *InteractionData `json:"data"`
 	GuildID        string           `json:"guild_id"`
 	ChannelID      string           `json:"channel_id"`
@@ -57,12 +57,12 @@ func (i *Interaction) SendResponse(message *models.InteractionMessage) {
 
 func (i *Interaction) Ack() {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, map[string]interface{}{"kind": 1}, "")
+	r := router.New("POST", path, map[string]interface{}{"type": 1}, "")
 	go r.Request()
 }
 
 func (i *Interaction) Defer(ephemeral bool) {
-	payload := map[string]interface{}{"kind": 5}
+	payload := map[string]interface{}{"type": 5}
 	if ephemeral {
 		payload["data"] = map[string]interface{}{"flags": 1 << 6}
 	}
@@ -79,7 +79,7 @@ func (i *Interaction) SendModal(modal *models.Modal) {
 
 func (i *Interaction) SendAutoComplete(choices ...*models.Choice) {
 	payload := map[string]interface{}{
-		"kind": 8,
+		"type": 8,
 		"data": map[string]interface{}{"choices": choices},
 	}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
@@ -89,7 +89,7 @@ func (i *Interaction) SendAutoComplete(choices ...*models.Choice) {
 
 func (i *Interaction) SendFollowup(choices ...*models.Choice) {
 	payload := map[string]interface{}{
-		"kind": 8,
+		"type": 8,
 		"data": map[string]interface{}{"choices": choices},
 	}
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)

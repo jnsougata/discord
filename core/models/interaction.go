@@ -12,7 +12,7 @@ type InteractionMessage struct {
 
 func (i *InteractionMessage) ToBody() map[string]interface{} {
 	return map[string]interface{}{
-		"kind": 4,
+		"type": 4,
 		"data": map[string]interface{}{
 			"content": i.Content,
 			"embeds":  i.Embeds,
