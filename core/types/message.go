@@ -1,4 +1,4 @@
-package kind
+package types
 
 import (
 	"encoding/json"
@@ -22,7 +22,7 @@ type Message struct {
 	Reactions          []map[string]interface{} `json:"reactions"`
 	Pinned             bool                     `json:"pinned"`
 	WebhookId          string                   `json:"webhook_id"`
-	Type               int                      `json:"kind"`
+	Type               int                      `json:"types"`
 	Activity           map[string]interface{}   `json:"activity"`
 	Application        map[string]interface{}   `json:"application"`
 	ApplicationId      string                   `json:"application_id"`

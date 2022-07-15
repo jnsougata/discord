@@ -3,9 +3,9 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/disgo/core/kind"
 	"github.com/disgo/core/models"
 	"github.com/disgo/core/router"
+	"github.com/disgo/core/types"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
@@ -22,7 +22,7 @@ type raw struct {
 var events = map[string]interface{}{}
 var queue []interface{}
 var commands = map[string]interface{}{}
-var bot *kind.User
+var bot *types.User
 var execLocked = true
 
 func (c *Client) getGateway() string {
@@ -149,9 +149,9 @@ func (c *Client) Run(token string) {
 		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
 		if wsmsg.Event == "READY" {
-			bot = kind.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
+			bot = types.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
 			execLocked = false
-			go events[wsmsg.Event].(func(bot *kind.User))(bot)
+			go events[wsmsg.Event].(func(bot *types.User))(bot)
 		}
 
 	}
@@ -163,18 +163,18 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 	if event == "MESSAGE_CREATE" {
 		if _, ok := events[event]; ok {
-			go events[event].(func(bot *kind.User, message *kind.Message))(bot, kind.BuildMessage(data))
+			go events[event].(func(bot *types.User, message *types.Message))(bot, types.BuildMessage(data))
 		}
 	}
 	if event == "INTERACTION_CREATE" {
-		i := kind.BuildInteraction(data)
+		i := types.BuildInteraction(data)
 		if i.Type == 1 {
 			// interaction ping
 		}
 		if i.Type == 2 {
 			mapName := buildQualifiedName(i.GuildID, i.Data.Name, "SLASH")
 			if _, ok := commands[mapName]; ok {
-				go commands[mapName].(func(bot *kind.User, interaction *kind.Interaction))(bot, i)
+				go commands[mapName].(func(bot *types.User, interaction *types.Interaction))(bot, i)
 			}
 		}
 		if i.Type == 3 {

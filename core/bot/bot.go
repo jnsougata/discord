@@ -2,8 +2,8 @@ package bot
 
 import (
 	"github.com/disgo/core/client"
-	"github.com/disgo/core/kind"
 	"github.com/disgo/core/models"
+	"github.com/disgo/core/types"
 )
 
 type Bot struct {
@@ -19,20 +19,20 @@ func (bot *Bot) Run(token string) {
 	bot.core.Run(token)
 }
 
-func (bot *Bot) OnMessage(handler func(bot *kind.User, message *kind.Message)) {
+func (bot *Bot) OnMessage(handler func(bot *types.User, message *types.Message)) {
 	bot.core.AddHandler("MESSAGE_CREATE", handler)
 }
 
-func (bot *Bot) OnReady(handler func(bot *kind.User)) {
+func (bot *Bot) OnReady(handler func(bot *types.User)) {
 	bot.core.AddHandler("READY", handler)
 }
 
-func (bot *Bot) OnInteraction(handler func(bot *kind.User, interaction *kind.Interaction)) {
+func (bot *Bot) OnInteraction(handler func(bot *types.User, interaction *types.Interaction)) {
 	bot.core.AddHandler("INTERACTION_CREATE", handler)
 }
 
 func (bot *Bot) AddCommand(
-	handler func(bot *kind.User, interaction *kind.Interaction),
+	handler func(bot *types.User, interaction *types.Interaction),
 	command models.SlashCommand,
 ) {
 	bot.core.Queue(command, handler)

@@ -1,4 +1,4 @@
-package kind
+package types
 
 import (
 	"encoding/json"
@@ -8,18 +8,22 @@ import (
 	"log"
 )
 
+type Option struct {
+	Name    string      `json:"name"`
+	Type    int         `json:"type"`
+	Value   interface{} `json:"value"`
+	Options []Option    `json:"options"`
+	Focused bool        `json:"focused"`
+}
+
 type InteractionData struct {
 	Id       string                 `json:"id"`
 	Name     string                 `json:"name"`
 	Type     int                    `json:"type"`
 	Resolved map[string]interface{} `json:"resolved"`
-	Options  map[string]interface{} `json:"options"`
-
-	// guild where interaction was created
-	GuildID string `json:"guild_id"`
-
-	// id of the targeted context
-	TargetId string `json:"target_id"`
+	Options  []Option               `json:"options"`
+	GuildID  string                 `json:"guild_id"`
+	TargetId string                 `json:"target_id"`
 }
 
 type Interaction struct {
