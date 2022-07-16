@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"log"
 )
 
 type User struct {
@@ -26,9 +25,6 @@ type User struct {
 func BuildUser(payload interface{}) *User {
 	u := &User{}
 	data, _ := json.Marshal(payload)
-	err := json.Unmarshal(data, u)
-	if err != nil {
-		log.Fatal(err)
-	}
+	_ = json.Unmarshal(data, u)
 	return u
 }

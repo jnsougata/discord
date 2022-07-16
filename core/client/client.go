@@ -13,9 +13,27 @@ import (
 	"time"
 )
 
-type raw struct {
-	SessionId   string                 `json:"session_id"`
-	Application map[string]interface{} `json:"application"`
+const (
+	OnReady       = "READY"
+	OnMessage     = "MESSAGE_CREATE"
+	OnInteraction = "INTERACTION_CREATE"
+)
+
+type client struct {
+	SessionId   string `json:"session_id"`
+	Application struct {
+		Id    string  `json:"id"`
+		Flags float64 `json:"flags"`
+	} `json:"application"`
+	User struct {
+		Bot           bool    `json:"bot"`
+		Avatar        string  `json:"avatar"`
+		Discriminator string  `json:"discriminator"`
+		Flags         float64 `json:"flags"`
+		MFAEnabled    bool    `json:"mfa_enabled"`
+		Username      string  `json:"username"`
+		Verified      bool    `json:"verified"`
+	}
 }
 
 var events = map[string]interface{}{}
@@ -97,7 +115,6 @@ func registerCommand(command any, token string, applicationId string, handler in
 		default:
 			route = fmt.Sprintf("/applications/%s/commands", applicationId)
 		}
-
 		ops, ok := payload["options"].([]interface{})
 		if ok {
 			var op types.Option
@@ -151,24 +168,21 @@ func (c *Client) Run(token string) {
 			Event    string                 `json:"t"`
 			Sequence int                    `json:"s"`
 		}
-		err := conn.ReadJSON(&wsmsg)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if wsmsg.Event == "READY" {
-			var rc raw
+		_ = conn.ReadJSON(&wsmsg)
+
+		if wsmsg.Event == OnReady {
+			var c client
 			b, _ := json.Marshal(wsmsg.Data)
-			err = json.Unmarshal(b, &rc)
-			if err != nil {
-				panic(err)
-			}
+			_ = json.Unmarshal(b, &c)
 			for _, cmd := range queue {
-				go registerCommand(
-					cmd.([]any)[0].(models.SlashCommand),
-					token,
-					rc.Application["id"].(string),
-					cmd.([]any)[1],
-				)
+				go registerCommand(cmd.([]any)[0].(models.SlashCommand), token, c.Application.Id, cmd.([]any)[1])
+			}
+			bot = types.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
+			execLocked = false
+
+			if _, ok := events[OnReady]; ok {
+				go events[OnReady].(func(bot *types.User))(bot)
+
 			}
 		}
 		if wsmsg.Op == 10 {
@@ -177,11 +191,6 @@ func (c *Client) Run(token string) {
 			go c.keepAlive(conn, int(interval))
 		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
-		if wsmsg.Event == "READY" {
-			bot = types.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
-			execLocked = false
-			go events[wsmsg.Event].(func(bot *types.User))(bot)
-		}
 
 	}
 }
@@ -190,29 +199,37 @@ func eventHandler(event string, data map[string]interface{}) {
 	if execLocked == true {
 		return
 	}
-	if event == "MESSAGE_CREATE" {
+	switch event {
+
+	case OnMessage:
 		if _, ok := events[event]; ok {
-			go events[event].(func(bot *types.User, message *types.Message))(bot, types.BuildMessage(data))
+			eventHook := events[event].(func(bot *types.User, message *types.Message))
+			go eventHook(bot, types.BuildMessage(data))
 		}
-	}
-	if event == "INTERACTION_CREATE" {
+
+	case OnInteraction:
 		i := types.BuildInteraction(data)
-		if i.Type == 1 {
+
+		switch i.Type {
+
+		case 1:
 			// interaction ping
-		}
-		if i.Type == 2 {
+		case 2:
 			if _, ok := commands[i.Data.Id]; ok {
-				go commands[i.Data.Id].(func(bot *types.User, interaction *types.Interaction))(bot, i)
+				commandHook := commands[i.Data.Id].(func(bot *types.User, interaction *types.Interaction))
+				go commandHook(bot, i)
 			}
-		}
-		if i.Type == 3 {
+		case 3:
 			// handle component interaction
-		}
-		if i.Type == 4 {
+		case 4:
 			// handle auto-complete interaction
-		}
-		if i.Type == 5 {
+		case 5:
 			// handle modal submit interaction
+
+		default:
+			log.Println("Unknown interaction type: ", i.Type)
 		}
+
+	default:
 	}
 }
