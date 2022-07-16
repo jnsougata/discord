@@ -36,11 +36,11 @@ type client struct {
 	}
 }
 
-var events = map[string]interface{}{}
-var queue []interface{}
-var commands = map[string]interface{}{}
 var bot *types.User
 var execLocked = true
+var queue []interface{}
+var eventHooks = map[string]interface{}{}
+var commandHooks = map[string]interface{}{}
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -91,14 +91,14 @@ func (c *Client) identify(conn *websocket.Conn, Token string, intent int) {
 }
 
 func (c *Client) AddHandler(name string, fn interface{}) {
-	events[name] = fn
+	eventHooks[name] = fn
 }
 
-func (c *Client) Queue(apc any, handler interface{}) {
-	queue = append(queue, []interface{}{apc, handler})
+func (c *Client) Queue(apc any, hook interface{}) {
+	queue = append(queue, []interface{}{apc, hook})
 }
 
-func registerCommand(command any, token string, applicationId string, handler interface{}) {
+func registerCommand(command any, token string, applicationId string, hook interface{}) {
 	var route string
 
 	switch command.(type) {
@@ -115,43 +115,17 @@ func registerCommand(command any, token string, applicationId string, handler in
 		default:
 			route = fmt.Sprintf("/applications/%s/commands", applicationId)
 		}
-		ops, ok := payload["options"].([]interface{})
-		if ok {
-			var op types.Option
-			for _, v := range ops {
-				m, _ := json.Marshal(v)
-				_ = json.Unmarshal(m, &op)
-				switch op.Type {
-				case models.SubCommandType:
-					// option subcommand
-				case models.SubCommandGroupType:
-					// option subcommand group
-				case models.StringType:
-					//option string
-				case models.BooleanType:
-					// option boolean
-				case models.IntegerType:
-					// option integer
-				case models.NumberType:
-					// option number
-				case models.UserType:
-					// option user
-				case models.ChannelType:
-					// option channel
-				case models.RoleType:
-					// option role
-				case models.MentionableType:
-					// option mentionable
-				case models.AttachmentType:
-					// option attachment
-				}
-			}
-		}
 		r := router.New("POST", route, payload, token)
 		d := map[string]interface{}{}
 		body, _ := io.ReadAll(r.Request().Body)
 		_ = json.Unmarshal(body, &d)
-		commands[d["id"].(string)] = handler
+		_, ok := d["id"]
+		if ok {
+			commandHooks[d["id"].(string)] = hook
+		} else {
+			errors, _ := json.Marshal(d["errors"])
+			panic(fmt.Sprintf("Failed to register command (%s):\nErrors: %s", payload["name"], errors))
+		}
 	}
 }
 
@@ -180,8 +154,8 @@ func (c *Client) Run(token string) {
 			bot = types.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
 			execLocked = false
 
-			if _, ok := events[OnReady]; ok {
-				go events[OnReady].(func(bot *types.User))(bot)
+			if _, ok := eventHooks[OnReady]; ok {
+				go eventHooks[OnReady].(func(bot *types.User))(bot)
 
 			}
 		}
@@ -202,8 +176,8 @@ func eventHandler(event string, data map[string]interface{}) {
 	switch event {
 
 	case OnMessage:
-		if _, ok := events[event]; ok {
-			eventHook := events[event].(func(bot *types.User, message *types.Message))
+		if _, ok := eventHooks[event]; ok {
+			eventHook := eventHooks[event].(func(bot *types.User, message *types.Message))
 			go eventHook(bot, types.BuildMessage(data))
 		}
 
@@ -215,8 +189,8 @@ func eventHandler(event string, data map[string]interface{}) {
 		case 1:
 			// interaction ping
 		case 2:
-			if _, ok := commands[i.Data.Id]; ok {
-				commandHook := commands[i.Data.Id].(func(bot *types.User, interaction *types.Interaction))
+			if _, ok := commandHooks[i.Data.Id]; ok {
+				commandHook := commandHooks[i.Data.Id].(func(bot *types.User, interaction *types.Interaction))
 				go commandHook(bot, i)
 			}
 		case 3:

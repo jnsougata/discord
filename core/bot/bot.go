@@ -31,6 +31,6 @@ func (bot *Bot) OnInteraction(handler func(bot *types.User, interaction *types.I
 	bot.core.AddHandler("INTERACTION_CREATE", handler)
 }
 
-func (bot *Bot) AddCommand(handler func(bot *types.User, interaction *types.Interaction), command models.SlashCommand) {
-	bot.core.Queue(command, handler)
+func (bot *Bot) AddCommand(hook func(bot *types.User, interaction *types.Interaction), command models.SlashCommand) {
+	bot.core.Queue(command, hook)
 }

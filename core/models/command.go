@@ -14,6 +14,12 @@ const (
 	AttachmentType      = 11
 )
 
+var (
+	StringParams = []string{
+		"name", "description", "type", "required", "autocomplete", "choices", "max_length", "min_length",
+	}
+)
+
 type SlashCommand struct {
 	Name                     string   `json:"name"`
 	Description              string   `json:"description"`
