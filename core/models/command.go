@@ -25,14 +25,14 @@ type SlashCommand struct {
 
 func NewSlashCommand(
 	name string, description string,
-	defaultMemberPermissions int, dmPermission bool,
-	testGuildId int64, options ...Option) SlashCommand {
+	defaultMemberPermissions int, dmInvoke bool,
+	guildId int64, options ...Option) SlashCommand {
 	return SlashCommand{
 		Name:                     name,
 		Description:              description,
 		Options:                  options,
-		DMPermission:             dmPermission,
-		TestGuildId:              testGuildId,
+		DMPermission:             dmInvoke,
+		TestGuildId:              guildId,
 		DefaultMemberPermissions: defaultMemberPermissions,
 	}
 }
