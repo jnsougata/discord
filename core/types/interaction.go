@@ -27,20 +27,20 @@ type InteractionData struct {
 }
 
 type Interaction struct {
-	ID             string           `json:"id"`
-	ApplicationID  string           `json:"application_id"`
-	Type           int              `json:"type"`
-	Data           *InteractionData `json:"data"`
-	GuildID        string           `json:"guild_id"`
-	ChannelID      string           `json:"channel_id"`
-	Member         interface{}      `json:"member"`
-	User           *User            `json:"user"`
-	Token          string           `json:"token"`
-	Version        int              `json:"version"`
-	Message        interface{}      `json:"message"`
-	AppPermissions string           `json:"app_permissions"`
-	Locale         string           `json:"locale"`
-	GuildLocale    string           `json:"guild_locale"`
+	ID             string          `json:"id"`
+	ApplicationID  string          `json:"application_id"`
+	Type           int             `json:"type"`
+	Data           InteractionData `json:"data"`
+	GuildID        string          `json:"guild_id"`
+	ChannelID      string          `json:"channel_id"`
+	Member         interface{}     `json:"member"`
+	User           *User           `json:"user"`
+	Token          string          `json:"token"`
+	Version        int             `json:"version"`
+	Message        interface{}     `json:"message"`
+	AppPermissions string          `json:"app_permissions"`
+	Locale         string          `json:"locale"`
+	GuildLocale    string          `json:"guild_locale"`
 }
 
 func BuildInteraction(payload interface{}) *Interaction {
@@ -75,13 +75,13 @@ func (i *Interaction) Defer(ephemeral bool) {
 	go r.Request()
 }
 
-func (i *Interaction) SendModal(modal *models.Modal) {
+func (i *Interaction) SendModal(modal models.Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
 	r := router.New("POST", path, modal.ToBody(), "")
 	go r.Request()
 }
 
-func (i *Interaction) SendAutoComplete(choices ...*models.Choice) {
+func (i *Interaction) SendAutoComplete(choices ...models.Choice) {
 	payload := map[string]interface{}{
 		"type": 8,
 		"data": map[string]interface{}{"choices": choices},
@@ -91,7 +91,7 @@ func (i *Interaction) SendAutoComplete(choices ...*models.Choice) {
 	go r.Request()
 }
 
-func (i *Interaction) SendFollowup(choices ...*models.Choice) {
+func (i *Interaction) SendFollowup(choices ...models.Choice) {
 	payload := map[string]interface{}{
 		"type": 8,
 		"data": map[string]interface{}{"choices": choices},

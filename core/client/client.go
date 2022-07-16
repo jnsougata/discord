@@ -6,11 +6,11 @@ import (
 	"github.com/disgo/core/models"
 	"github.com/disgo/core/router"
 	"github.com/disgo/core/types"
+	"github.com/disgo/core/utils"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
-	"reflect"
 	"time"
 )
 
@@ -54,7 +54,7 @@ func (c *Client) keepAlive(conn *websocket.Conn, dur int) {
 	}
 }
 
-func (c *Client) sendIdentification(conn *websocket.Conn, Token string, intent int) {
+func (c *Client) identify(conn *websocket.Conn, Token string, intent int) {
 	payload := map[string]interface{}{
 		"op": 2,
 		"d": map[string]interface{}{
@@ -81,32 +81,41 @@ func (c *Client) Queue(apc any, handler interface{}) {
 	queue = append(queue, []interface{}{apc, handler})
 }
 
-func registerCommand(com any, token string, applicationId string, handler interface{}) {
-	typePrefix := ""
-	if reflect.TypeOf(com) == reflect.TypeOf(models.SlashCommand{}) {
-		typePrefix = "SLASH_"
+func registerCommand(command any, token string, applicationId string, handler interface{}) {
+	var route string
+	var prefix string
+	var mappingName string
+	switch command.(type) {
+	case models.SlashCommand:
+		prefix = "SLASH"
+		c, _ := json.Marshal(command)
+		payload := map[string]interface{}{}
+		_ = json.Unmarshal(c, &payload)
+		guildId := payload["guild_id"].(string)
+		switch guildId {
+		case "":
+			mappingName = utils.MakeHash([]byte(prefix + "_GUILD_" + payload["name"].(string) + "_" + guildId))
+			route = fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId)
+			delete(payload, "guild_id")
+		default:
+			mappingName = utils.MakeHash([]byte(prefix + "_GLOBAL_" + payload["name"].(string)))
+			route = fmt.Sprintf("/applications/%s/commands", applicationId)
+		}
+		commands[mappingName] = handler
+		ops, ok := payload["options"].([]map[string]interface{})
+		if ok {
+			for _, op := range ops {
+				switch op["type"].(float64) {
+				default:
+					log.Println(op["type"].(float64))
+				}
+			}
+		}
+
+		r := router.New("POST", route, payload, token)
+		r.Request()
 	}
-	c, _ := json.Marshal(com)
-	cmd := map[string]interface{}{}
-	err := json.Unmarshal(c, &cmd)
-	if err != nil {
-		panic(err)
-	}
-	guildId := cmd["guild_id"].(string)
-	qualifiedName := ""
-	path := ""
-	if guildId != "" {
-		qualifiedName = typePrefix + "GUILD_" + cmd["name"].(string) + "_" + guildId
-		path = fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId)
-		commands[qualifiedName] = handler
-		delete(cmd, "guild_id")
-	} else {
-		qualifiedName = typePrefix + "GLOBAL_" + cmd["name"].(string)
-		commands[qualifiedName] = handler
-		path = fmt.Sprintf("/applications/%s/commands", applicationId)
-	}
-	r := router.New("POST", path, cmd, token)
-	r.Request()
+
 }
 
 func (c *Client) Run(token string) {
@@ -144,7 +153,7 @@ func (c *Client) Run(token string) {
 		}
 		if wsmsg.Op == 10 {
 			interval := wsmsg.Data["heartbeat_interval"].(float64)
-			c.sendIdentification(conn, token, c.intent)
+			c.identify(conn, token, c.intent)
 			go c.keepAlive(conn, int(interval))
 		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
@@ -172,7 +181,7 @@ func eventHandler(event string, data map[string]interface{}) {
 			// interaction ping
 		}
 		if i.Type == 2 {
-			mapName := buildQualifiedName(i.GuildID, i.Data.Name, "SLASH")
+			mapName := makeMapName(i.GuildID, i.Data.Name, "SLASH")
 			if _, ok := commands[mapName]; ok {
 				go commands[mapName].(func(bot *types.User, interaction *types.Interaction))(bot, i)
 			}
@@ -189,9 +198,11 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 }
 
-func buildQualifiedName(guild string, cmdName string, cmdType string) string {
-	if guild == "" {
-		return cmdType + "_GLOBAL_" + cmdName
+func makeMapName(guild string, cmdName string, cmdType string) string {
+	switch guild {
+	case "":
+		return utils.MakeHash([]byte(cmdType + "_GLOBAL_" + cmdName))
+	default:
+		return utils.MakeHash([]byte(cmdType + "_GUILD_" + cmdName + "_" + guild))
 	}
-	return cmdType + "_GUILD_" + cmdName + "_" + guild
 }
