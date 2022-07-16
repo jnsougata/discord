@@ -6,7 +6,6 @@ import (
 	"github.com/disgo/core/models"
 	"github.com/disgo/core/router"
 	"github.com/disgo/core/types"
-	"github.com/disgo/core/utils"
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
@@ -83,39 +82,60 @@ func (c *Client) Queue(apc any, handler interface{}) {
 
 func registerCommand(command any, token string, applicationId string, handler interface{}) {
 	var route string
-	var prefix string
-	var mappingName string
+
 	switch command.(type) {
 	case models.SlashCommand:
-		prefix = "SLASH"
 		c, _ := json.Marshal(command)
 		payload := map[string]interface{}{}
 		_ = json.Unmarshal(c, &payload)
 		guildId := payload["guild_id"].(string)
+
 		switch guildId {
 		case "":
-			mappingName = utils.MakeHash([]byte(prefix + "_GUILD_" + payload["name"].(string) + "_" + guildId))
 			route = fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId)
 			delete(payload, "guild_id")
 		default:
-			mappingName = utils.MakeHash([]byte(prefix + "_GLOBAL_" + payload["name"].(string)))
 			route = fmt.Sprintf("/applications/%s/commands", applicationId)
 		}
-		commands[mappingName] = handler
-		ops, ok := payload["options"].([]map[string]interface{})
+
+		ops, ok := payload["options"].([]interface{})
 		if ok {
-			for _, op := range ops {
-				switch op["type"].(float64) {
-				default:
-					log.Println(op["type"].(float64))
+			var op types.Option
+			for _, v := range ops {
+				m, _ := json.Marshal(v)
+				_ = json.Unmarshal(m, &op)
+				switch op.Type {
+				case models.SubCommandType:
+					// option subcommand
+				case models.SubCommandGroupType:
+					// option subcommand group
+				case models.StringType:
+					//option string
+				case models.BooleanType:
+					// option boolean
+				case models.IntegerType:
+					// option integer
+				case models.NumberType:
+					// option number
+				case models.UserType:
+					// option user
+				case models.ChannelType:
+					// option channel
+				case models.RoleType:
+					// option role
+				case models.MentionableType:
+					// option mentionable
+				case models.AttachmentType:
+					// option attachment
 				}
 			}
 		}
-
 		r := router.New("POST", route, payload, token)
-		r.Request()
+		d := map[string]interface{}{}
+		body, _ := io.ReadAll(r.Request().Body)
+		_ = json.Unmarshal(body, &d)
+		commands[d["id"].(string)] = handler
 	}
-
 }
 
 func (c *Client) Run(token string) {
@@ -181,9 +201,8 @@ func eventHandler(event string, data map[string]interface{}) {
 			// interaction ping
 		}
 		if i.Type == 2 {
-			mapName := makeMapName(i.GuildID, i.Data.Name, "SLASH")
-			if _, ok := commands[mapName]; ok {
-				go commands[mapName].(func(bot *types.User, interaction *types.Interaction))(bot, i)
+			if _, ok := commands[i.Data.Id]; ok {
+				go commands[i.Data.Id].(func(bot *types.User, interaction *types.Interaction))(bot, i)
 			}
 		}
 		if i.Type == 3 {
@@ -195,14 +214,5 @@ func eventHandler(event string, data map[string]interface{}) {
 		if i.Type == 5 {
 			// handle modal submit interaction
 		}
-	}
-}
-
-func makeMapName(guild string, cmdName string, cmdType string) string {
-	switch guild {
-	case "":
-		return utils.MakeHash([]byte(cmdType + "_GLOBAL_" + cmdName))
-	default:
-		return utils.MakeHash([]byte(cmdType + "_GUILD_" + cmdName + "_" + guild))
 	}
 }

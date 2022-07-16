@@ -1,7 +1,5 @@
 package models
 
-// type Option map[string]interface{}
-
 const (
 	SubCommandType      = 1
 	SubCommandGroupType = 2
@@ -23,6 +21,20 @@ type SlashCommand struct {
 	DefaultMemberPermissions int      `json:"default_member_permissions,omitempty"`
 	DMPermission             bool     `json:"dm_permission,omitempty"`
 	TestGuildId              int64    `json:"guild_id,string"`
+}
+
+func NewSlashCommand(
+	name string, description string,
+	defaultMemberPermissions int, dmPermission bool,
+	testGuildId int64, options ...Option) SlashCommand {
+	return SlashCommand{
+		Name:                     name,
+		Description:              description,
+		Options:                  options,
+		DMPermission:             dmPermission,
+		TestGuildId:              testGuildId,
+		DefaultMemberPermissions: defaultMemberPermissions,
+	}
 }
 
 type Option struct {
