@@ -60,13 +60,8 @@ func New(intent int) *Client {
 }
 
 func (c *Client) keepAlive(conn *websocket.Conn, dur int) {
-	seq := 0
 	for {
-		err := conn.WriteJSON(map[string]interface{}{"op": 1, "d": 251})
-		seq++
-		if err != nil {
-			log.Fatal(err)
-		}
+		_ = conn.WriteJSON(map[string]interface{}{"op": 1, "d": 251})
 		time.Sleep(time.Duration(dur) * time.Millisecond)
 	}
 }
@@ -107,7 +102,6 @@ func registerCommand(command any, token string, applicationId string, hook inter
 		payload := map[string]interface{}{}
 		_ = json.Unmarshal(c, &payload)
 		guildId := payload["guild_id"].(string)
-
 		switch guildId {
 		case "":
 			route = fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId)
@@ -190,8 +184,8 @@ func eventHandler(event string, data map[string]interface{}) {
 			// interaction ping
 		case 2:
 			if _, ok := commandHooks[i.Data.Id]; ok {
-				commandHook := commandHooks[i.Data.Id].(func(bot *types.User, interaction *types.Interaction))
-				go commandHook(bot, i)
+				commandHook := commandHooks[i.Data.Id].(func(bot *types.User, interaction *types.Interaction, options ...types.Option))
+				go commandHook(bot, i, i.Data.Options...)
 			}
 		case 3:
 			// handle component interaction

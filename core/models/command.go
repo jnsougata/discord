@@ -14,10 +14,19 @@ const (
 	AttachmentType      = 11
 )
 
-var (
-	StringParams = []string{
-		"name", "description", "type", "required", "autocomplete", "choices", "max_length", "min_length",
-	}
+const (
+	GuildTextChannel   = 0
+	DMChannel          = 1
+	GuildVoiceChannel  = 2
+	GroupDMChannel     = 3
+	GuildCategory      = 4
+	GuildNews          = 5
+	GuildNewsThread    = 10
+	GuildPublicThread  = 11
+	GuildPrivateThread = 12
+	GuildStageVoice    = 13
+	GuildDirectory     = 14
+	GuildForum         = 15
 )
 
 type SlashCommand struct {
@@ -53,7 +62,8 @@ type Option struct {
 	MinValue     int64    `json:"min_value,omitempty"`
 	MaxValue     int64    `json:"max_value,omitempty"`
 	AutoComplete bool     `json:"auto_complete,omitempty"`
-	ChannelTypes []string `json:"channel_types,omitempty"`
+	ChannelTypes []int    `json:"channel_types,omitempty"`
+	Options      []Option `json:"options,omitempty"`
 	Choices      []Choice `json:"choices,omitempty"`
 }
 
