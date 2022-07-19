@@ -1,4 +1,4 @@
-module github.com/disgo
+module github.com/jnsougata/disgo
 
 go 1.18
 

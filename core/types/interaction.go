@@ -3,8 +3,8 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/disgo/core/models"
-	"github.com/disgo/core/router"
+	"github.com/jnsougata/disgo/core/models"
+	"github.com/jnsougata/disgo/core/router"
 	"log"
 )
 

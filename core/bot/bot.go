@@ -1,9 +1,9 @@
 package bot
 
 import (
-	"github.com/disgo/core/client"
-	"github.com/disgo/core/models"
-	"github.com/disgo/core/types"
+	"github.com/jnsougata/disgo/core/client"
+	"github.com/jnsougata/disgo/core/models"
+	"github.com/jnsougata/disgo/core/types"
 )
 
 type Bot struct {

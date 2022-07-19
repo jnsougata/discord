@@ -3,10 +3,10 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/disgo/core/models"
-	"github.com/disgo/core/router"
-	"github.com/disgo/core/types"
 	"github.com/gorilla/websocket"
+	"github.com/jnsougata/disgo/core/models"
+	"github.com/jnsougata/disgo/core/router"
+	"github.com/jnsougata/disgo/core/types"
 	"io"
 	"log"
 	"net/http"
