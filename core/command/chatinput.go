@@ -1,4 +1,4 @@
-package models
+package command
 
 const (
 	SubCommandType      = 1
@@ -38,7 +38,7 @@ type SlashCommand struct {
 	TestGuildId              int64    `json:"guild_id,string"`
 }
 
-func NewSlashCommand(
+func New(
 	name string, description string,
 	defaultMemberPermissions int, dmInvoke bool,
 	guildId int64, options ...Option) SlashCommand {

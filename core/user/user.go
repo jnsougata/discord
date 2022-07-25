@@ -1,4 +1,4 @@
-package types
+package user
 
 import (
 	"encoding/json"
@@ -22,9 +22,9 @@ type User struct {
 	PublicFlags   int    `json:"public_flags"`
 }
 
-func BuildUser(payload interface{}) *User {
-	u := &User{}
+func FromData(payload interface{}) *User {
+	user := &User{}
 	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, u)
-	return u
+	_ = json.Unmarshal(data, user)
+	return user
 }

@@ -1,4 +1,6 @@
-package types
+package attachment
+
+import "encoding/json"
 
 type Attachment struct {
 	ID          string `json:"id"`
@@ -11,4 +13,17 @@ type Attachment struct {
 	Width       int    `json:"width"`
 	Height      int    `json:"height"`
 	Ephemeral   bool   `json:"ephemeral"`
+}
+
+type Partial struct {
+	Id          string `json:"id"`
+	Filename    string `json:"filename"`
+	Description string `json:"description"`
+}
+
+func FromData(payload interface{}) *Attachment {
+	attachment := &Attachment{}
+	data, _ := json.Marshal(payload)
+	_ = json.Unmarshal(data, attachment)
+	return attachment
 }

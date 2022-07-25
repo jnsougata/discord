@@ -1,6 +1,8 @@
-package types
+package guild
 
-type RawGuild struct {
+import "encoding/json"
+
+type Guild struct {
 	ID                          string                   `json:"id"`
 	Name                        string                   `json:"name"`
 	Icon                        string                   `json:"icon"`
@@ -42,4 +44,11 @@ type RawGuild struct {
 	NSFWLevel                   int                      `json:"nsfw_level"`
 	Stickers                    map[string]interface{}   `json:"stickers"`
 	PremiumProgressBarEnabled   bool                     `json:"premium_progress_bar_enabled"`
+}
+
+func FromData(payload interface{}) *Guild {
+	guild := &Guild{}
+	data, _ := json.Marshal(payload)
+	_ = json.Unmarshal(data, guild)
+	return guild
 }

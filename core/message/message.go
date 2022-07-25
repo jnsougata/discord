@@ -1,8 +1,7 @@
-package types
+package message
 
 import (
 	"encoding/json"
-	"log"
 )
 
 type Message struct {
@@ -35,12 +34,9 @@ type Message struct {
 	Stickers           []map[string]interface{} `json:"sticker_items"`
 }
 
-func BuildMessage(payload interface{}) *Message {
+func NewMessage(payload interface{}) *Message {
 	msg := &Message{}
 	data, _ := json.Marshal(payload)
-	err := json.Unmarshal(data, msg)
-	if err != nil {
-		log.Fatal(err)
-	}
+	_ = json.Unmarshal(data, msg)
 	return msg
 }

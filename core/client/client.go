@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/jnsougata/disgo/core/models"
+	"github.com/jnsougata/disgo/core/command"
+	"github.com/jnsougata/disgo/core/interaction"
+	"github.com/jnsougata/disgo/core/message"
 	"github.com/jnsougata/disgo/core/router"
-	"github.com/jnsougata/disgo/core/types"
+	"github.com/jnsougata/disgo/core/user"
 	"io"
 	"log"
 	"net/http"
@@ -36,7 +38,7 @@ type client struct {
 	}
 }
 
-var bot *types.User
+var bot *user.User
 var execLocked = true
 var queue []interface{}
 var eventHooks = map[string]interface{}{}
@@ -53,10 +55,9 @@ func (c *Client) getGateway() string {
 	return payload["url"].(string) + "?v=10&encoding=json"
 }
 
-type Client struct{ intent int }
-
-func New(intent int) *Client {
-	return &Client{intent: intent}
+type Client struct {
+	Intent  int
+	Memoize bool
 }
 
 func (c *Client) keepAlive(conn *websocket.Conn, dur int) {
@@ -93,12 +94,12 @@ func (c *Client) Queue(apc any, hook interface{}) {
 	queue = append(queue, []interface{}{apc, hook})
 }
 
-func registerCommand(command any, token string, applicationId string, hook interface{}) {
+func registerCommand(com any, token string, applicationId string, hook interface{}) {
 	var route string
 
-	switch command.(type) {
-	case models.SlashCommand:
-		c, _ := json.Marshal(command)
+	switch com.(type) {
+	case command.SlashCommand:
+		c, _ := json.Marshal(com)
 		payload := map[string]interface{}{}
 		_ = json.Unmarshal(c, &payload)
 		guildId := payload["guild_id"].(string)
@@ -143,23 +144,21 @@ func (c *Client) Run(token string) {
 			b, _ := json.Marshal(wsmsg.Data)
 			_ = json.Unmarshal(b, &c)
 			for _, cmd := range queue {
-				go registerCommand(cmd.([]any)[0].(models.SlashCommand), token, c.Application.Id, cmd.([]any)[1])
+				go registerCommand(cmd.([]any)[0].(command.SlashCommand), token, c.Application.Id, cmd.([]any)[1])
 			}
-			bot = types.BuildUser(wsmsg.Data["user"].(map[string]interface{}))
+			bot = user.FromData(wsmsg.Data["user"].(map[string]interface{}))
 			execLocked = false
 
 			if _, ok := eventHooks[OnReady]; ok {
-				go eventHooks[OnReady].(func(bot *types.User))(bot)
-
+				go eventHooks[OnReady].(func(bot user.User))(*bot)
 			}
 		}
 		if wsmsg.Op == 10 {
 			interval := wsmsg.Data["heartbeat_interval"].(float64)
-			c.identify(conn, token, c.intent)
+			c.identify(conn, token, c.Intent)
 			go c.keepAlive(conn, int(interval))
 		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
-
 	}
 }
 
@@ -171,12 +170,17 @@ func eventHandler(event string, data map[string]interface{}) {
 
 	case OnMessage:
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot *types.User, message *types.Message))
-			go eventHook(bot, types.BuildMessage(data))
+			eventHook := eventHooks[event].(func(bot user.User, message message.Message))
+			go eventHook(*bot, *message.NewMessage(data))
 		}
 
 	case OnInteraction:
-		i := types.BuildInteraction(data)
+		i := interaction.FromData(data)
+
+		if _, ok := eventHooks[event]; ok {
+			eventHook := eventHooks[event].(func(bot user.User, interaction interaction.Interaction))
+			go eventHook(*bot, *i)
+		}
 
 		switch i.Type {
 
@@ -184,8 +188,8 @@ func eventHandler(event string, data map[string]interface{}) {
 			// interaction ping
 		case 2:
 			if _, ok := commandHooks[i.Data.Id]; ok {
-				commandHook := commandHooks[i.Data.Id].(func(bot *types.User, interaction *types.Interaction, options ...types.Option))
-				go commandHook(bot, i, i.Data.Options...)
+				commandHook := commandHooks[i.Data.Id].(func(bot user.User, i interaction.Interaction, ops ...interaction.Option))
+				go commandHook(*bot, *i, i.Data.Options...)
 			}
 		case 3:
 			// handle component interaction
@@ -197,7 +201,6 @@ func eventHandler(event string, data map[string]interface{}) {
 		default:
 			log.Println("Unknown interaction type: ", i.Type)
 		}
-
 	default:
 	}
 }
