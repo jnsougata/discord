@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/jnsougata/disgo/core/command"
+	"github.com/jnsougata/disgo/core/consts"
+	"github.com/jnsougata/disgo/core/guild"
 	"github.com/jnsougata/disgo/core/interaction"
 	"github.com/jnsougata/disgo/core/message"
 	"github.com/jnsougata/disgo/core/router"
@@ -13,12 +15,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-)
-
-const (
-	OnReady       = "READY"
-	OnMessage     = "MESSAGE_CREATE"
-	OnInteraction = "INTERACTION_CREATE"
 )
 
 type client struct {
@@ -139,7 +135,7 @@ func (c *Client) Run(token string) {
 		}
 		_ = conn.ReadJSON(&wsmsg)
 
-		if wsmsg.Event == OnReady {
+		if wsmsg.Event == consts.OnReady {
 			var c client
 			b, _ := json.Marshal(wsmsg.Data)
 			_ = json.Unmarshal(b, &c)
@@ -149,8 +145,8 @@ func (c *Client) Run(token string) {
 			bot = user.FromData(wsmsg.Data["user"].(map[string]interface{}))
 			execLocked = false
 
-			if _, ok := eventHooks[OnReady]; ok {
-				go eventHooks[OnReady].(func(bot user.User))(*bot)
+			if _, ok := eventHooks[consts.OnReady]; ok {
+				go eventHooks[consts.OnReady].(func(bot user.User))(*bot)
 			}
 		}
 		if wsmsg.Op == 10 {
@@ -168,13 +164,20 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 	switch event {
 
-	case OnMessage:
+	case consts.OnMessageCreate:
 		if _, ok := eventHooks[event]; ok {
 			eventHook := eventHooks[event].(func(bot user.User, message message.Message))
 			go eventHook(*bot, *message.NewMessage(data))
 		}
 
-	case OnInteraction:
+	case consts.OnGuildCreate:
+		if _, ok := eventHooks[event]; ok {
+			eventHook := eventHooks[event].(func(bot user.User, guild guild.Guild))
+			go eventHook(*bot, *guild.FromData(data))
+		}
+
+	case consts.OnInteractionCreate:
+
 		i := interaction.FromData(data)
 
 		if _, ok := eventHooks[event]; ok {

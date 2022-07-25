@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jnsougata/disgo/core/attachment"
 	"github.com/jnsougata/disgo/core/command"
+	"github.com/jnsougata/disgo/core/component"
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
@@ -12,21 +13,22 @@ import (
 )
 
 type Message struct {
-	Content         string        `json:"content"`
-	Embeds          []embed.Embed `json:"embeds"`
-	AllowedMentions []string      `json:"allowed_mentions"`
-	Tts             bool          `json:"tts"`
-	Flags           int           `json:"flags"`
-	//Components      []types.Component  `json:"components"`
-	Attachments []attachment.Partial `json:"attachments"`
+	Content         string
+	Embeds          []embed.Embed
+	AllowedMentions []string
+	Tts             bool
+	Flags           int
+	View            component.View
+	Attachments     []attachment.Partial
 }
 
 func (m *Message) ToBody() map[string]interface{} {
 	return map[string]interface{}{
-		"content": m.Content,
-		"embeds":  m.Embeds,
-		"tts":     m.Tts,
-		"flags":   m.Flags,
+		"content":    m.Content,
+		"embeds":     m.Embeds,
+		"tts":        m.Tts,
+		"flags":      m.Flags,
+		"components": m.View.ToComponent(),
 	}
 }
 

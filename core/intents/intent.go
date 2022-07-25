@@ -44,7 +44,7 @@ type Intent struct {
 	AutoModExecute        bool
 }
 
-func (i *Intent) Custom() int {
+func (i Intent) Custom() int {
 	base := 0
 	if i.Guilds {
 		base |= GuildsIntent

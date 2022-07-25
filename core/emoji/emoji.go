@@ -3,9 +3,9 @@ package emoji
 import "encoding/json"
 
 type Partial struct {
-	Name     string `json:"name"`
-	ID       string `json:"id"`
-	Animated bool   `json:"animated"`
+	Name     string `json:"name,omitempty"`
+	ID       string `json:"id,omitempty"`
+	Animated bool   `json:"animated,omitempty"`
 }
 
 type Emoji struct {
