@@ -55,20 +55,30 @@ type View struct {
 }
 
 func (v *View) ToComponent() []interface{} {
-
 	var c []interface{}
-	if len(v.ActionRows) > 0 {
+	ids := map[string]bool{}
+	if len(v.ActionRows) > 0 && len(v.ActionRows) <= 5 {
 		for _, row := range v.ActionRows {
+			numButtons := 0
 			tmp := map[string]interface{}{
 				"type":       1,
 				"components": []interface{}{},
 			}
 			for _, button := range row.Buttons {
+				numButtons++
 				if button.CustomId == "" && button.Style != LinkButtonStyle {
 					log.Println(
 						fmt.Sprintf("CustomId must be provided with non-link button `%s`", button.Label))
+				} else if _, ok := ids[button.CustomId]; !ok {
+					if numButtons <= 5 {
+						ids[button.CustomId] = true
+						tmp["components"] = append(tmp["components"].([]interface{}), button)
+					} else {
+						log.Println("An Action Row can either contain max 5x Buttons")
+					}
 				} else {
-					tmp["components"] = append(tmp["components"].([]interface{}), button)
+					log.Println(
+						fmt.Sprintf("CustomId `%s` already used with a previous component", button.CustomId))
 				}
 			}
 			for _, selectMenu := range row.SelectMenus {
@@ -80,12 +90,25 @@ func (v *View) ToComponent() []interface{} {
 					log.Println("MinValues must be less than or equals to MaxValues")
 				} else if selectMenu.MinValues < 0 {
 					log.Println("MinValues must be greater than or equals to 0")
+				} else if _, ok := ids[selectMenu.CustomId]; !ok {
+					if numButtons == 0 {
+						ids[selectMenu.CustomId] = true
+						tmp["components"] = append(tmp["components"].([]interface{}), selectMenu)
+					} else {
+						log.Println("An Action Row can contain one of these: (1x SelectMenu) or (max 5x Buttons)")
+					}
 				} else {
-					tmp["components"] = append(tmp["components"].([]interface{}), selectMenu)
+					log.Println(
+						fmt.Sprintf("CustomId `%s` already used with a previous component", selectMenu.CustomId))
 				}
 			}
-			c = append(c, tmp)
+			if len(tmp["components"].([]interface{})) > 0 {
+				c = append(c, tmp)
+			}
+
 		}
+	} else {
+		log.Println("ActionRows must contain between 1 and 5 rows")
 	}
 	return c
 }

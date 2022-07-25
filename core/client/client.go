@@ -92,7 +92,6 @@ func (c *Client) Queue(apc any, hook interface{}) {
 
 func registerCommand(com any, token string, applicationId string, hook interface{}) {
 	var route string
-
 	switch com.(type) {
 	case command.SlashCommand:
 		c, _ := json.Marshal(com)
