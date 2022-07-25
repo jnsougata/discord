@@ -30,7 +30,8 @@ func (bot *Bot) Run(token string) {
 }
 
 func (bot *Bot) AddCommand(
-	command command.SlashCommand, handler func(bot user.User, interaction interaction.Interaction, options ...interaction.Option)) {
+	command command.SlashCommand,
+	handler func(bot user.User, interaction interaction.Interaction, options ...interaction.Option)) {
 	bot.core.Queue(command, handler)
 }
 

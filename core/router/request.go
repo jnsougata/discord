@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -24,7 +25,7 @@ func (obj *Router) Request() *http.Response {
 	client := &http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	return resp
 }

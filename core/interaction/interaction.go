@@ -58,7 +58,7 @@ type Interaction struct {
 	GuildID        string      `json:"guild_id"`
 	ChannelID      string      `json:"channel_id"`
 	Member         interface{} `json:"member"`
-	User           *user.User  `json:"user"`
+	User           user.User   `json:"user"`
 	Token          string      `json:"token"`
 	Version        int         `json:"version"`
 	Message        interface{} `json:"message"`

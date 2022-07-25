@@ -39,6 +39,7 @@ var execLocked = true
 var queue []interface{}
 var eventHooks = map[string]interface{}{}
 var commandHooks = map[string]interface{}{}
+var componentHooks = map[string]interface{}{}
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -82,6 +83,10 @@ func (c *Client) identify(conn *websocket.Conn, Token string, intent int) {
 	}
 }
 
+func storeCallbacks(customId string, handler func(i interaction.Interaction)) {
+	componentHooks[customId] = handler
+}
+
 func (c *Client) AddHandler(name string, fn interface{}) {
 	eventHooks[name] = fn
 }
@@ -113,8 +118,8 @@ func registerCommand(com any, token string, applicationId string, hook interface
 		if ok {
 			commandHooks[d["id"].(string)] = hook
 		} else {
-			errors, _ := json.Marshal(d["errors"])
-			panic(fmt.Sprintf("Failed to register command (%s):\nErrors: %s", payload["name"], errors))
+			log.Fatal(
+				fmt.Sprintf("Failed to register command `%s`. Code %s", payload["name"], d["message"]))
 		}
 	}
 }
@@ -133,7 +138,6 @@ func (c *Client) Run(token string) {
 			Sequence int                    `json:"s"`
 		}
 		_ = conn.ReadJSON(&wsmsg)
-
 		if wsmsg.Event == consts.OnReady {
 			var c client
 			b, _ := json.Marshal(wsmsg.Data)
@@ -143,7 +147,6 @@ func (c *Client) Run(token string) {
 			}
 			bot = user.FromData(wsmsg.Data["user"].(map[string]interface{}))
 			execLocked = false
-
 			if _, ok := eventHooks[consts.OnReady]; ok {
 				go eventHooks[consts.OnReady].(func(bot user.User))(*bot)
 			}
