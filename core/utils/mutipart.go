@@ -6,9 +6,16 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/textproto"
+	"strings"
 )
 
-func MultiPartWriter(data map[string]interface{}, files []File) []byte {
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeQuotes(s string) string {
+	return quoteEscaper.Replace(s)
+}
+
+func MultiPartWriter(data map[string]interface{}, files []File) ([]byte, string) {
 	var buffer bytes.Buffer
 	writer := multipart.NewWriter(&buffer)
 	payload, _ := json.MarshalIndent(data, "", "  ")
@@ -18,11 +25,9 @@ func MultiPartWriter(data map[string]interface{}, files []File) []byte {
 	field, _ := writer.CreatePart(h)
 	_, _ = field.Write(payload)
 	for i, file := range files {
-		ff, _ := writer.CreateFormFile(fmt.Sprintf("file[%v]", i), file.Name)
+		ff, _ := writer.CreateFormFile(fmt.Sprintf("file[%v]", i), escapeQuotes(file.Name))
 		_, _ = ff.Write(file.Data)
 	}
 	_ = writer.Close()
-	b := buffer.Bytes()
-	fmt.Println(string(b))
-	return b
+	return buffer.Bytes(), writer.Boundary()
 }

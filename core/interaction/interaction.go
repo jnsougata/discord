@@ -3,13 +3,13 @@ package interaction
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jnsougata/disgo/core/attachment"
 	"github.com/jnsougata/disgo/core/command"
 	"github.com/jnsougata/disgo/core/component"
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
+	"github.com/jnsougata/disgo/core/utils"
 )
 
 type Message struct {
@@ -20,7 +20,7 @@ type Message struct {
 	Ephemeral       bool
 	SuppressEmbeds  bool
 	View            component.View
-	Attachments     []attachment.Partial
+	Files           []utils.File
 }
 
 func (m *Message) ToBody() map[string]interface{} {
@@ -50,8 +50,16 @@ func (m *Message) ToBody() map[string]interface{} {
 	if len(m.View.ActionRows) > 0 {
 		body["components"] = m.View.ToComponent()
 	}
-	if len(m.Attachments) > 0 {
-		body["attachments"] = m.Attachments
+	if len(m.Files) > 0 {
+		body["attachments"] = []map[string]interface{}{}
+		for i, file := range m.Files {
+			a := map[string]interface{}{
+				"id":          i,
+				"filename":    file.Name,
+				"description": file.Description,
+			}
+			body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
+		}
 	}
 	return body
 }
@@ -100,7 +108,11 @@ func FromData(payload interface{}) *Interaction {
 
 func (i *Interaction) SendResponse(message Message) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, map[string]interface{}{"type": 4, "data": message.ToBody()}, "", nil)
+	body := map[string]interface{}{
+		"type": 4,
+		"data": message.ToBody(),
+	}
+	r := router.New("POST", path, body, "", message.Files)
 	go r.Request()
 }
 
@@ -138,6 +150,6 @@ func (i *Interaction) SendAutoComplete(choices ...command.Choice) {
 
 func (i *Interaction) SendFollowup(message Message) {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)
-	r := router.New("POST", path, message.ToBody(), "", nil)
+	r := router.New("POST", path, message.ToBody(), "", message.Files)
 	go r.Request()
 }
