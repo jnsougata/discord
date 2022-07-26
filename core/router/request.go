@@ -3,6 +3,8 @@ package router
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"github.com/jnsougata/disgo/core/utils"
 	"io"
 	"log"
 	"net/http"
@@ -13,15 +15,42 @@ const BASE = "https://discord.com/api/v10"
 type Router struct {
 	Token  string
 	Path   string
-	Body   map[string]interface{}
+	Data   map[string]interface{}
+	Files  []utils.File
 	Method string
 }
 
 func (obj *Router) Request() *http.Response {
-	bodyByte, _ := json.Marshal(obj.Body)
-	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(bodyByte)))
+	body := utils.MultiPartWriter(obj.Data, obj.Files)
+	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
+	r.Header.Set("Content-Type", "multipart/form-data")
+	r.Header.Set("Authorization", fmt.Sprintf("Bot %s", obj.Token))
+	client := &http.Client{}
+	resp, err := client.Do(r)
+	if err != nil {
+		log.Println(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	log.Println(string(b))
+	return resp
+}
+
+func New(method string, path string, data map[string]interface{}, token string, files []utils.File) *Router {
+	return &Router{Token: token, Path: path, Data: data, Method: method, Files: files}
+}
+
+type MinimalRouter struct {
+	Method string
+	Token  string
+	Path   string
+	Data   map[string]interface{}
+}
+
+func (obj *MinimalRouter) Request() *http.Response {
+	body, _ := json.Marshal(obj.Data)
+	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
 	r.Header.Set("Content-Type", "application/json")
-	r.Header.Set("Authorization", "Bot "+obj.Token)
+	r.Header.Set("Authorization", fmt.Sprintf("Bot %s", obj.Token))
 	client := &http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
@@ -29,7 +58,6 @@ func (obj *Router) Request() *http.Response {
 	}
 	return resp
 }
-
-func New(method string, path string, body map[string]interface{}, token string) *Router {
-	return &Router{Token: token, Path: path, Body: body, Method: method}
+func Minimal(method string, path string, data map[string]interface{}, token string) *MinimalRouter {
+	return &MinimalRouter{Method: method, Path: path, Data: data, Token: token}
 }

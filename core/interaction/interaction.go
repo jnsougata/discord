@@ -100,13 +100,13 @@ func FromData(payload interface{}) *Interaction {
 
 func (i *Interaction) SendResponse(message Message) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, map[string]interface{}{"type": 4, "data": message.ToBody()}, "")
+	r := router.New("POST", path, map[string]interface{}{"type": 4, "data": message.ToBody()}, "", nil)
 	go r.Request()
 }
 
 func (i *Interaction) Ack() {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, map[string]interface{}{"type": 1}, "")
+	r := router.New("POST", path, map[string]interface{}{"type": 1}, "", nil)
 	go r.Request()
 }
 
@@ -116,13 +116,13 @@ func (i *Interaction) Defer(ephemeral bool) {
 		payload["data"] = map[string]interface{}{"flags": 1 << 6}
 	}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, payload, "")
+	r := router.New("POST", path, payload, "", nil)
 	go r.Request()
 }
 
 func (i *Interaction) SendModal(modal modal.Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, modal.ToBody(), "")
+	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()
 }
 
@@ -132,12 +132,12 @@ func (i *Interaction) SendAutoComplete(choices ...command.Choice) {
 		"data": map[string]interface{}{"choices": choices},
 	}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, payload, "")
+	r := router.New("POST", path, payload, "", nil)
 	go r.Request()
 }
 
 func (i *Interaction) SendFollowup(message Message) {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)
-	r := router.New("POST", path, message.ToBody(), "")
+	r := router.New("POST", path, message.ToBody(), "", nil)
 	go r.Request()
 }

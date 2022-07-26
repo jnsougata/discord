@@ -106,7 +106,7 @@ func registerCommand(com any, token string, applicationId string, hook interface
 		default:
 			route = fmt.Sprintf("/applications/%s/commands", applicationId)
 		}
-		r := router.New("POST", route, payload, token)
+		r := router.Minimal("POST", route, payload, token)
 		d := map[string]interface{}{}
 		body, _ := io.ReadAll(r.Request().Body)
 		_ = json.Unmarshal(body, &d)

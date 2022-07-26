@@ -3,12 +3,12 @@ package component
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jnsougata/disgo/core/attachment"
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/emoji"
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
+	"github.com/jnsougata/disgo/core/utils"
 	"log"
 )
 
@@ -30,7 +30,7 @@ type Message struct {
 	Ephemeral       bool
 	SuppressEmbeds  bool
 	View            View
-	Attachments     []attachment.Partial
+	Files           []utils.File
 }
 
 func (m *Message) ToBody() map[string]interface{} {
@@ -60,8 +60,16 @@ func (m *Message) ToBody() map[string]interface{} {
 	if len(m.View.ActionRows) > 0 {
 		body["components"] = m.View.ToComponent()
 	}
-	if len(m.Attachments) > 0 {
-		body["attachments"] = m.Attachments
+	if len(m.Files) > 0 {
+		body["attachments"] = []map[string]interface{}{}
+		for i, file := range m.Files {
+			a := map[string]interface{}{
+				"id":          i,
+				"filename":    file.Name,
+				"description": file.Description,
+			}
+			body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
+		}
 	}
 	return body
 }
@@ -69,9 +77,9 @@ func (m *Message) ToBody() map[string]interface{} {
 type SelectOption struct {
 	Label       string        `json:"label"`
 	Value       string        `json:"value"`
-	Description string        `json:"description"`
-	Emoji       emoji.Partial `json:"emoji"`
-	Default     bool          `json:"default"`
+	Description string        `json:"description,omitempty"`
+	Emoji       emoji.Partial `json:"emoji,omitempty"`
+	Default     bool          `json:"default,omitempty"`
 }
 
 type Button struct {
@@ -84,15 +92,26 @@ type Button struct {
 }
 
 func (b *Button) ToComponent() map[string]interface{} {
-	return map[string]interface{}{
-		"type":      2,
-		"style":     b.Style,
-		"label":     b.Label,
-		"emoji":     b.Emoji,
-		"custom_id": b.CustomId,
-		"url":       b.URL,
-		"disabled":  b.Disabled,
+	if b.CustomId == "" && b.Style != LinkButton {
+		panic("CustomId is required for each Button")
 	}
+	btn := map[string]interface{}{"type": 2, "custom_id": b.CustomId}
+	if b.Style != 0 {
+		btn["style"] = b.Style
+	}
+	if b.Label != "" {
+		btn["label"] = b.Label
+	}
+	if b.Emoji.ID != "" {
+		btn["emoji"] = b.Emoji
+	}
+	if b.URL != "" {
+		btn["url"] = b.URL
+	}
+	if b.Disabled {
+		btn["disabled"] = true
+	}
+	return btn
 }
 
 func (b *Button) AddCallback(handler func(bot user.User, interaction Interaction)) {
@@ -114,15 +133,30 @@ func (s *SelectMenu) AddCallback(handler func(bot user.User, interaction Interac
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
-	return map[string]interface{}{
-		"type":        3,
-		"custom_id":   s.CustomId,
-		"options":     s.Options,
-		"placeholder": s.Placeholder,
-		"min_values":  s.MinValues,
-		"max_values":  s.MaxValues,
-		"disabled":    s.Disabled,
+	if s.CustomId == "" {
+		log.Println("CustomId is required for each SelectMenu")
 	}
+	menu := map[string]interface{}{"type": 3, "custom_id": s.CustomId}
+	if s.Placeholder != "" {
+		menu["placeholder"] = s.Placeholder
+	}
+	if s.MinValues >= 0 {
+		menu["min_values"] = s.MinValues
+	} else {
+		log.Println("MinValues must be greater than or equal to 0")
+	}
+	if s.MaxValues <= 25 {
+		menu["max_values"] = s.MaxValues
+	} else {
+		log.Println("MaxValues must be less than or equal to 25")
+	}
+	if s.Disabled {
+		menu["disabled"] = true
+	}
+	if len(s.Options) > 0 {
+		menu["options"] = s.Options
+	}
+	return menu
 }
 
 type ActionRow struct {
@@ -147,10 +181,7 @@ func (v *View) ToComponent() []interface{} {
 			}
 			for _, button := range row.Buttons {
 				numButtons++
-				if button.CustomId == "" && button.Style != LinkButton {
-					log.Println(
-						fmt.Sprintf("CustomId must be provided with non-link button `%s`", button.Label))
-				} else if _, ok := ids[button.CustomId]; !ok {
+				if _, ok := ids[button.CustomId]; !ok {
 					if numButtons <= 5 {
 						ids[button.CustomId] = true
 						tmp["components"] = append(tmp["components"].([]interface{}), button.ToComponent())
@@ -163,15 +194,7 @@ func (v *View) ToComponent() []interface{} {
 				}
 			}
 			if len(row.SelectMenu.Options) > 0 {
-				if row.SelectMenu.CustomId == "" {
-					log.Println("CustomId must be provided with Select Menu")
-				} else if row.SelectMenu.MaxValues > 25 {
-					log.Println("MaxValues must be less than or equals to 25")
-				} else if row.SelectMenu.MinValues > row.SelectMenu.MaxValues {
-					log.Println("MinValues must be less than or equals to MaxValues")
-				} else if row.SelectMenu.MinValues < 0 {
-					log.Println("MinValues must be greater than or equals to 0")
-				} else if _, ok := ids[row.SelectMenu.CustomId]; !ok {
+				if _, ok := ids[row.SelectMenu.CustomId]; !ok {
 					if numButtons == 0 {
 						ids[row.SelectMenu.CustomId] = true
 						tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
@@ -180,7 +203,8 @@ func (v *View) ToComponent() []interface{} {
 					}
 				} else {
 					log.Println(
-						fmt.Sprintf("CustomId `%s` already used with a previous component", row.SelectMenu.CustomId))
+						fmt.Sprintf(
+							"CustomId `%s` already used with a previous component", row.SelectMenu.CustomId))
 				}
 			}
 			if len(tmp["components"].([]interface{})) > 0 {
@@ -223,31 +247,33 @@ func FromData(payload interface{}) *Interaction {
 
 func (i *Interaction) SendResponse(message Message) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, map[string]interface{}{"type": 4, "data": message.ToBody()}, "")
+	r := router.New(
+		"POST", path, map[string]interface{}{"type": 4, "data": message.ToBody()}, "", message.Files)
 	go r.Request()
 }
 
 func (i *Interaction) Ack() {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, map[string]interface{}{"type": 1}, "")
+	body := map[string]interface{}{"type": 1}
+	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
 func (i *Interaction) Defer() {
 	payload := map[string]interface{}{"type": 6}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, payload, "")
+	r := router.New("POST", path, payload, "", nil)
 	go r.Request()
 }
 
 func (i *Interaction) SendModal(modal modal.Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, modal.ToBody(), "")
+	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()
 }
 
 func (i *Interaction) SendFollowup(message Message) {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)
-	r := router.New("POST", path, message.ToBody(), "")
+	r := router.New("POST", path, message.ToBody(), "", message.Files)
 	go r.Request()
 }
