@@ -16,20 +16,44 @@ type Message struct {
 	Content         string
 	Embeds          []embed.Embed
 	AllowedMentions []string
-	Tts             bool
-	Flags           int
+	TTS             bool
+	Ephemeral       bool
+	SuppressEmbeds  bool
 	View            component.View
 	Attachments     []attachment.Partial
 }
 
 func (m *Message) ToBody() map[string]interface{} {
-	return map[string]interface{}{
-		"content":    m.Content,
-		"embeds":     m.Embeds,
-		"tts":        m.Tts,
-		"flags":      m.Flags,
-		"components": m.View.ToComponent(),
+	flag := 0
+	body := map[string]interface{}{}
+	if m.Content != "" {
+		body["content"] = m.Content
 	}
+	if len(m.Embeds) > 0 && len(m.Embeds) <= 25 {
+		body["embeds"] = m.Embeds
+	}
+	if len(m.AllowedMentions) > 0 && len(m.AllowedMentions) <= 100 {
+		body["allowed_mentions"] = m.AllowedMentions
+	}
+	if m.TTS {
+		body["tts"] = true
+	}
+	if m.Ephemeral {
+		flag |= 1 << 6
+	}
+	if m.SuppressEmbeds {
+		flag |= 1 << 2
+	}
+	if m.Ephemeral || m.SuppressEmbeds {
+		body["flags"] = flag
+	}
+	if len(m.View.ActionRows) > 0 {
+		body["components"] = m.View.ToComponent()
+	}
+	if len(m.Attachments) > 0 {
+		body["attachments"] = m.Attachments
+	}
+	return body
 }
 
 type Option struct {
