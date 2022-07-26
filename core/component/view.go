@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/emoji"
+	"github.com/jnsougata/disgo/core/file"
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
-	"github.com/jnsougata/disgo/core/utils"
 	"log"
 )
 
@@ -30,7 +30,7 @@ type Message struct {
 	Ephemeral       bool
 	SuppressEmbeds  bool
 	View            View
-	Files           []utils.File
+	Files           []file.File
 }
 
 func (m *Message) ToBody() map[string]interface{} {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/jnsougata/disgo/core/file"
 	"github.com/jnsougata/disgo/core/utils"
 	"io"
 	"log"
@@ -16,7 +17,7 @@ type Router struct {
 	Token  string
 	Path   string
 	Data   map[string]interface{}
-	Files  []utils.File
+	Files  []file.File
 	Method string
 }
 
@@ -30,10 +31,12 @@ func (obj *Router) Request() *http.Response {
 	if err != nil {
 		log.Println(err)
 	}
+	b, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(b))
 	return resp
 }
 
-func New(method string, path string, data map[string]interface{}, token string, files []utils.File) *Router {
+func New(method string, path string, data map[string]interface{}, token string, files []file.File) *Router {
 	return &Router{Token: token, Path: path, Data: data, Method: method, Files: files}
 }
 

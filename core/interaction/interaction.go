@@ -6,10 +6,10 @@ import (
 	"github.com/jnsougata/disgo/core/command"
 	"github.com/jnsougata/disgo/core/component"
 	"github.com/jnsougata/disgo/core/embed"
+	"github.com/jnsougata/disgo/core/file"
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
-	"github.com/jnsougata/disgo/core/utils"
 )
 
 type Message struct {
@@ -20,7 +20,7 @@ type Message struct {
 	Ephemeral       bool
 	SuppressEmbeds  bool
 	View            component.View
-	Files           []utils.File
+	Files           []file.File
 }
 
 func (m *Message) ToBody() map[string]interface{} {
@@ -53,12 +53,14 @@ func (m *Message) ToBody() map[string]interface{} {
 	if len(m.Files) > 0 {
 		body["attachments"] = []map[string]interface{}{}
 		for i, file := range m.Files {
-			a := map[string]interface{}{
-				"id":          i,
-				"filename":    file.Name,
-				"description": file.Description,
+			if len(file.Content) > 0 {
+				a := map[string]interface{}{
+					"id":          i,
+					"filename":    file.Name,
+					"description": file.Description,
+				}
+				body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
 			}
-			body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
 		}
 	}
 	return body
