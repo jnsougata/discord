@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/jnsougata/disgo/core/command"
+	"github.com/jnsougata/disgo/core/component"
 	"github.com/jnsougata/disgo/core/consts"
 	"github.com/jnsougata/disgo/core/guild"
 	"github.com/jnsougata/disgo/core/interaction"
@@ -39,7 +40,6 @@ var execLocked = true
 var queue []interface{}
 var eventHooks = map[string]interface{}{}
 var commandHooks = map[string]interface{}{}
-var componentHooks = map[string]interface{}{}
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -81,10 +81,6 @@ func (c *Client) identify(conn *websocket.Conn, Token string, intent int) {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func storeCallbacks(customId string, handler func(i interaction.Interaction)) {
-	componentHooks[customId] = handler
 }
 
 func (c *Client) AddHandler(name string, fn interface{}) {
@@ -197,7 +193,21 @@ func eventHandler(event string, data map[string]interface{}) {
 				go commandHook(*bot, *i, i.Data.Options...)
 			}
 		case 3:
-			// handle component interaction
+			factory := component.CallbackFactory
+			componentInteraction := component.FromData(data)
+			switch componentInteraction.Data.Type {
+			case 2:
+				if _, ok := factory[componentInteraction.Data.Id]; ok {
+					callback := factory[componentInteraction.Data.Id].(func(b user.User, i component.Interaction))
+					go callback(*bot, *componentInteraction)
+				}
+			case 3:
+				if _, ok := factory[componentInteraction.Data.Id]; ok {
+					callback := factory[componentInteraction.Data.Id].(func(b user.User, i component.Interaction, v ...string))
+					go callback(*bot, *componentInteraction, componentInteraction.Data.Values...)
+				}
+
+			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
