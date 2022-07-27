@@ -2,12 +2,14 @@ package message
 
 import (
 	"encoding/json"
+	"github.com/jnsougata/disgo/core/embed"
+	"github.com/jnsougata/disgo/core/user"
 )
 
 type Message struct {
 	Id                 string                   `json:"id"`
 	ChannelId          string                   `json:"channel_id"`
-	Author             map[string]interface{}   `json:"author"`
+	Author             user.User                `json:"author"`
 	Content            string                   `json:"content"`
 	Timestamp          string                   `json:"timestamp"`
 	EditedTimestamp    string                   `json:"edited_timestamp"`
@@ -17,7 +19,7 @@ type Message struct {
 	RoleMentions       []string                 `json:"role_mentions"`
 	ChannelMentions    []string                 `json:"channel_mentions"`
 	Attachments        []map[string]interface{} `json:"attachments"`
-	Embeds             []map[string]interface{} `json:"embeds"`
+	Embeds             []embed.Embed            `json:"embeds"`
 	Reactions          []map[string]interface{} `json:"reactions"`
 	Pinned             bool                     `json:"pinned"`
 	WebhookId          string                   `json:"webhook_id"`
@@ -34,7 +36,7 @@ type Message struct {
 	Stickers           []map[string]interface{} `json:"sticker_items"`
 }
 
-func NewMessage(payload interface{}) *Message {
+func FromData(payload interface{}) *Message {
 	msg := &Message{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, msg)

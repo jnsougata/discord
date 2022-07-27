@@ -7,6 +7,7 @@ import (
 	"github.com/jnsougata/disgo/core/component"
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/file"
+	"github.com/jnsougata/disgo/core/member"
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
@@ -104,20 +105,20 @@ type Data struct {
 }
 
 type Interaction struct {
-	ID             string      `json:"id"`
-	ApplicationID  string      `json:"application_id"`
-	Type           int         `json:"type"`
-	Data           Data        `json:"data"`
-	GuildID        string      `json:"guild_id"`
-	ChannelID      string      `json:"channel_id"`
-	Member         interface{} `json:"member"`
-	User           user.User   `json:"user"`
-	Token          string      `json:"token"`
-	Version        int         `json:"version"`
-	Message        interface{} `json:"message"`
-	AppPermissions string      `json:"app_permissions"`
-	Locale         string      `json:"locale"`
-	GuildLocale    string      `json:"guild_locale"`
+	ID             string        `json:"id"`
+	ApplicationID  string        `json:"application_id"`
+	Type           int           `json:"type"`
+	Data           Data          `json:"data"`
+	GuildID        string        `json:"guild_id"`
+	ChannelID      string        `json:"channel_id"`
+	Member         member.Member `json:"member"`
+	User           user.User     `json:"user"`
+	Token          string        `json:"token"`
+	Version        int           `json:"version"`
+	Message        interface{}   `json:"message"`
+	AppPermissions string        `json:"app_permissions"`
+	Locale         string        `json:"locale"`
+	GuildLocale    string        `json:"guild_locale"`
 }
 
 func FromData(payload interface{}) *Interaction {

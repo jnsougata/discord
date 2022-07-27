@@ -165,7 +165,7 @@ func eventHandler(event string, data map[string]interface{}) {
 	case consts.OnMessageCreate:
 		if _, ok := eventHooks[event]; ok {
 			eventHook := eventHooks[event].(func(bot user.User, message message.Message))
-			go eventHook(*bot, *message.NewMessage(data))
+			go eventHook(*bot, *message.FromData(data))
 		}
 
 	case consts.OnGuildCreate:

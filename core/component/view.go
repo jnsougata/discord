@@ -6,6 +6,7 @@ import (
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/emoji"
 	"github.com/jnsougata/disgo/core/file"
+	"github.com/jnsougata/disgo/core/member"
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
@@ -249,7 +250,7 @@ type Interaction struct {
 	Data           Data                   `json:"data"`
 	GuildID        string                 `json:"guild_id"`
 	ChannelID      string                 `json:"channel_id"`
-	Member         interface{}            `json:"member"`
+	Member         member.Member          `json:"member"`
 	User           user.User              `json:"user"`
 	Token          string                 `json:"token"`
 	Version        int                    `json:"version"`
