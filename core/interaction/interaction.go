@@ -103,7 +103,7 @@ type Data struct {
 	TargetId string                 `json:"target_id"`
 }
 
-type Interaction struct {
+type Context struct {
 	Id             string        `json:"id"`
 	ApplicationId  string        `json:"application_id"`
 	Type           int           `json:"type"`
@@ -120,15 +120,15 @@ type Interaction struct {
 	GuildLocale    string        `json:"guild_locale"`
 }
 
-func FromData(payload interface{}) *Interaction {
-	i := &Interaction{}
+func FromData(payload interface{}) *Context {
+	i := &Context{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, i)
 	return i
 }
 
-func (i *Interaction) SendResponse(message Response) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
+func (c *Context) SendResponse(message Response) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body := map[string]interface{}{
 		"type": 4,
 		"data": message.ToBody(),
@@ -137,41 +137,53 @@ func (i *Interaction) SendResponse(message Response) {
 	go r.Request()
 }
 
-func (i *Interaction) Ack() {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
+func (c *Context) Ack() {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body := map[string]interface{}{"type": 1}
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) Defer(ephemeral bool) {
+func (c *Context) Defer(ephemeral bool) {
 	body := map[string]interface{}{"type": 5}
 	if ephemeral {
 		body["data"] = map[string]interface{}{"flags": 1 << 6}
 	}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendModal(modal component.Modal) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
+func (c *Context) SendModal(modal component.Modal) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendAutoComplete(choices ...command.Choice) {
+func (c *Context) SendAutoComplete(choices ...command.Choice) {
 	body := map[string]interface{}{
 		"type": 8,
 		"data": map[string]interface{}{"choices": choices},
 	}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendFollowup(resp Response) {
-	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
+func (c *Context) SendFollowup(resp Response) {
+	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
 	r := router.New("POST", path, resp.ToBody(), "", resp.Files)
+	go r.Request()
+}
+
+func (c *Context) DeleteOriginalMessage() {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := router.Minimal("DELETE", path, nil, "")
+	go r.Request()
+}
+
+func (c *Context) EditOriginalResponse(resp Response) {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := router.New("PATCH", path, resp.ToBody(), "", resp.Files)
 	go r.Request()
 }

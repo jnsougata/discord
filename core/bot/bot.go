@@ -31,7 +31,7 @@ func (bot *Bot) Run(token string) {
 
 func (bot *Bot) AddCommand(
 	command command.SlashCommand,
-	handler func(bot user.User, interaction interaction.Interaction, options ...interaction.Option)) {
+	handler func(bot user.User, interaction interaction.Context, options ...interaction.Option)) {
 	bot.core.Queue(command, handler)
 }
 
@@ -43,7 +43,7 @@ func (bot *Bot) OnReady(handler func(bot user.User)) {
 	bot.core.AddHandler(consts.OnReady, handler)
 }
 
-func (bot *Bot) OnInteraction(handler func(bot user.User, interaction interaction.Interaction)) {
+func (bot *Bot) OnInteraction(handler func(bot user.User, interaction interaction.Context)) {
 	bot.core.AddHandler(consts.OnInteractionCreate, handler)
 }
 

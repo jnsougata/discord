@@ -176,49 +176,66 @@ func eventHandler(event string, data map[string]interface{}) {
 
 	case consts.OnInteractionCreate:
 
-		i := interaction.FromData(data)
+		ctx := interaction.FromData(data)
 
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot user.User, interaction interaction.Interaction))
-			go eventHook(*bot, *i)
+			eventHook := eventHooks[event].(func(bot user.User, ctx interaction.Context))
+			go eventHook(*bot, *ctx)
 		}
-		switch i.Type {
+		switch ctx.Type {
 		case 1:
 			// interaction ping
 		case 2:
-			if _, ok := commandHooks[i.Data.Id]; ok {
-				commandHook := commandHooks[i.Data.Id].(func(bot user.User, i interaction.Interaction, ops ...interaction.Option))
-				go commandHook(*bot, *i, i.Data.Options...)
+			if _, ok := commandHooks[ctx.Data.Id]; ok {
+				hook := commandHooks[ctx.Data.Id].(func(bot user.User, ctx interaction.Context, ops ...interaction.Option))
+				go hook(*bot, *ctx, ctx.Data.Options...)
 			}
 		case 3:
 			factory := component.CallbackTasks
-			ci := component.FromData(data)
-			switch ci.Data.ComponentType {
+			cctx := component.FromData(data)
+			switch cctx.Data.ComponentType {
 			case 2:
-				if _, ok := factory[ci.Data.CustomId]; ok {
-					callback := factory[ci.Data.CustomId].(func(b user.User, i component.Interaction))
-					go callback(*bot, *ci)
+				if _, ok := factory[cctx.Data.CustomId]; ok {
+					callback := factory[cctx.Data.CustomId].(func(b user.User, cctx component.Context))
+					go callback(*bot, *cctx)
+					delete(factory, cctx.Data.CustomId)
 				}
 			case 3:
-				if _, ok := factory[ci.Data.CustomId]; ok {
-					callback := factory[ci.Data.CustomId].(func(b user.User, i component.Interaction, v ...string))
-					go callback(*bot, *ci, ci.Data.Values...)
+				if _, ok := factory[cctx.Data.CustomId]; ok {
+					callback := factory[cctx.Data.CustomId].(func(b user.User, i component.Context, v ...string))
+					go callback(*bot, *cctx, cctx.Data.Values...)
+					delete(factory, cctx.Data.CustomId)
 				}
-
+			}
+			tmp, ok := component.TimeoutTasks[cctx.Data.CustomId]
+			if ok {
+				onTimeoutHandler := tmp[1].(func(b user.User, i component.Context))
+				duration := tmp[0].(float64)
+				delete(component.TimeoutTasks, cctx.Data.CustomId)
+				go ScheduleTimeoutTask(duration, *bot, *cctx, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
-			ci := component.FromData(data)
-			callback, ok := component.CallbackTasks[ci.Data.CustomId]
+			cctx := component.FromData(data)
+			callback, ok := component.CallbackTasks[cctx.Data.CustomId]
 			if ok {
-				go callback.(func(b user.User, i component.Interaction))(*bot, *ci)
-				delete(component.CallbackTasks, ci.Data.CustomId)
+				go callback.(func(b user.User, cctx component.Context))(*bot, *cctx)
+				delete(component.CallbackTasks, cctx.Data.CustomId)
 			}
 
 		default:
-			log.Println("Unknown interaction type: ", i.Type)
+			log.Println("Unknown interaction type: ", ctx.Type)
 		}
 	default:
 	}
+}
+
+func ScheduleTimeoutTask(
+	timeout float64,
+	user user.User,
+	ci component.Context,
+	handler func(bot user.User, interaction component.Context)) {
+	time.Sleep(time.Duration(timeout) * time.Second)
+	handler(user, ci)
 }

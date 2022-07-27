@@ -22,7 +22,7 @@ const (
 )
 
 var CallbackTasks = map[string]interface{}{}
-var TimeoutTasks = map[string]interface{}{}
+var TimeoutTasks = map[string][]interface{}{}
 
 type Response struct {
 	Content         string
@@ -103,15 +103,12 @@ type Button struct {
 	URL      string
 	Disabled bool
 	CustomId string
-}
-
-func (b *Button) OnClick(handler func(bot user.User, interaction Interaction)) {
-	b.CustomId = utils.AssignId("")
-	CallbackTasks[b.CustomId] = handler
+	OnClick  func(bot user.User, cctx Context)
 }
 
 func (b *Button) ToComponent() map[string]interface{} {
-	b.CustomId = utils.AssignId(b.CustomId)
+	b.CustomId = utils.AssignId("")
+	CallbackTasks[b.CustomId] = b.OnClick
 	btn := map[string]interface{}{
 		"type":      2,
 		"custom_id": b.CustomId,
@@ -154,15 +151,12 @@ type SelectMenu struct {
 	MinValues   int
 	MaxValues   int
 	Disabled    bool
-}
-
-func (s *SelectMenu) OnSelection(handler func(bot user.User, interaction Interaction, values ...string)) {
-	s.CustomId = utils.AssignId("")
-	CallbackTasks[s.CustomId] = handler
+	OnSelection func(bot user.User, cctx Context, values ...string)
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
-	s.CustomId = utils.AssignId(s.CustomId)
+	s.CustomId = utils.AssignId("")
+	CallbackTasks[s.CustomId] = s.OnSelection
 	menu := map[string]interface{}{"type": 3, "custom_id": s.CustomId}
 	if s.Placeholder != "" {
 		menu["placeholder"] = s.Placeholder
@@ -194,16 +188,12 @@ type ActionRow struct {
 type View struct {
 	Timeout    float64
 	ActionRows []ActionRow
-	CustomId   string
-}
-
-func (v *View) OnTimeout(handler func(bot user.User, interaction Interaction)) {
-	TimeoutTasks[".."] = handler
+	OnTimeout  func(bot user.User, interaction Context)
 }
 
 func (v *View) ToComponent() []interface{} {
-	if v.Timeout == 0 {
-		v.Timeout = 15 * 60
+	if v.Timeout == 0 || v.Timeout > 14.8*60 {
+		v.Timeout = 14.8 * 60
 	}
 	var undo = map[string]bool{}
 	var c []interface{}
@@ -217,19 +207,21 @@ func (v *View) ToComponent() []interface{} {
 			for _, button := range row.Buttons {
 				if num < 5 {
 					undo[button.CustomId] = true
+					TimeoutTasks[button.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
 					tmp["components"] = append(tmp["components"].([]interface{}), button.ToComponent())
+					num++
 				}
-				num++
 			}
 			if len(row.SelectMenu.Options) > 0 {
 				if num == 0 {
 					undo[row.SelectMenu.CustomId] = true
+					TimeoutTasks[row.SelectMenu.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
 					tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
 				} else {
 					log.Println("Single ActionRow can contain either 1x SelectMenu or max 5x Buttons")
 				}
 			}
-			if len(tmp["components"].([]interface{})) > 0 {
+			if len(undo) > 0 {
 				c = append(c, tmp)
 				go utils.ScheduleDeletion(v.Timeout, CallbackTasks, undo)
 			}
@@ -256,7 +248,7 @@ type Data struct {
 	Components    []Row    `json:"components"`
 }
 
-type Interaction struct {
+type Context struct {
 	ID             string                 `json:"id"`
 	ApplicationId  string                 `json:"application_id"`
 	Type           int                    `json:"type"`
@@ -273,35 +265,47 @@ type Interaction struct {
 	GuildLocale    string                 `json:"guild_locale"`
 }
 
-func FromData(payload interface{}) *Interaction {
-	i := &Interaction{}
+func FromData(payload interface{}) *Context {
+	i := &Context{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, i)
 	return i
 }
 
-func (i *Interaction) SendResponse(resp Response) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+func (c *Context) SendResponse(resp Response) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
 	r := router.New(
 		"POST", path, map[string]interface{}{"type": 4, "data": resp.ToBody()}, "", resp.Files)
 	go r.Request()
 }
 
-func (i *Interaction) Defer() {
+func (c *Context) Defer() {
 	body := map[string]interface{}{"type": 6}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendModal(modal Modal) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+func (c *Context) SendModal(modal Modal) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
 	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendFollowup(resp Response) {
-	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
+func (c *Context) SendFollowup(resp Response) {
+	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
 	r := router.New("POST", path, resp.ToBody(), "", resp.Files)
+	go r.Request()
+}
+
+func (c *Context) DeleteOriginalResponse() {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := router.Minimal("DELETE", path, nil, "")
+	go r.Request()
+}
+
+func (c *Context) EditOriginalResponse(resp Response) {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := router.New("PATCH", path, resp.ToBody(), "", resp.Files)
 	go r.Request()
 }
