@@ -3,6 +3,7 @@ disgo
 
 Quick Example
 -------------
+
 .. code:: go
 package main
 
