@@ -7,7 +7,6 @@ import (
 	"github.com/jnsougata/disgo/core/emoji"
 	"github.com/jnsougata/disgo/core/file"
 	"github.com/jnsougata/disgo/core/member"
-	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
 	"github.com/jnsougata/disgo/core/utils"
@@ -23,8 +22,9 @@ const (
 )
 
 var CallbackFactory = map[string]interface{}{}
+var Ids = map[string]bool{}
 
-type Message struct {
+type Response struct {
 	Content         string
 	Embed           embed.Embed
 	Embeds          []embed.Embed
@@ -37,7 +37,7 @@ type Message struct {
 	Files           []file.File
 }
 
-func (m *Message) ToBody() map[string]interface{} {
+func (m *Response) ToBody() map[string]interface{} {
 	flag := 0
 	body := map[string]interface{}{}
 	if m.Content != "" {
@@ -136,7 +136,7 @@ func (b *Button) ToComponent() map[string]interface{} {
 	return btn
 }
 
-func (b *Button) AddCallback(handler func(bot user.User, interaction Interaction)) {
+func (b *Button) Callback(handler func(bot user.User, interaction Interaction)) {
 	CallbackFactory[b.CustomId] = handler
 }
 
@@ -150,7 +150,7 @@ type SelectMenu struct {
 	Disabled    bool
 }
 
-func (s *SelectMenu) AddCallback(handler func(bot user.User, interaction Interaction, values ...string)) {
+func (s *SelectMenu) Callback(handler func(bot user.User, interaction Interaction, values ...string)) {
 	CallbackFactory[s.CustomId] = handler
 }
 
@@ -188,12 +188,10 @@ type ActionRow struct {
 
 type View struct {
 	ActionRows []ActionRow
-	Callback   func(interaction Interaction, values ...string)
 }
 
 func (v *View) ToComponent() []interface{} {
 	var c []interface{}
-	ids := map[string]bool{}
 	if len(v.ActionRows) > 0 && len(v.ActionRows) <= 5 {
 		for _, row := range v.ActionRows {
 			numButtons := 0
@@ -203,9 +201,9 @@ func (v *View) ToComponent() []interface{} {
 			}
 			for _, button := range row.Buttons {
 				numButtons++
-				if _, ok := ids[button.CustomId]; !ok {
+				if _, ok := Ids[button.CustomId]; !ok {
 					if numButtons <= 5 {
-						ids[button.CustomId] = true
+						Ids[button.CustomId] = true
 						tmp["components"] = append(tmp["components"].([]interface{}), button.ToComponent())
 					} else {
 						log.Println("An Action Row can either contain max 5x Buttons")
@@ -216,9 +214,9 @@ func (v *View) ToComponent() []interface{} {
 				}
 			}
 			if len(row.SelectMenu.Options) > 0 {
-				if _, ok := ids[row.SelectMenu.CustomId]; !ok {
+				if _, ok := Ids[row.SelectMenu.CustomId]; !ok {
 					if numButtons == 0 {
-						ids[row.SelectMenu.CustomId] = true
+						Ids[row.SelectMenu.CustomId] = true
 						tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
 					} else {
 						log.Println("An Action Row can contain one of these: (1x SelectMenu) or (max 5x Buttons)")
@@ -267,10 +265,10 @@ func FromData(payload interface{}) *Interaction {
 	return i
 }
 
-func (i *Interaction) SendResponse(message Message) {
+func (i *Interaction) SendResponse(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
 	r := router.New(
-		"POST", path, map[string]interface{}{"type": 4, "data": message.ToBody()}, "", message.Files)
+		"POST", path, map[string]interface{}{"type": 4, "data": resp.ToBody()}, "", resp.Files)
 	go r.Request()
 }
 
@@ -281,14 +279,14 @@ func (i *Interaction) Defer() {
 	go r.Request()
 }
 
-func (i *Interaction) SendModal(modal modal.Modal) {
+func (i *Interaction) SendModal(modal Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
 	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendFollowup(message Message) {
+func (i *Interaction) SendFollowup(resp Response) {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)
-	r := router.New("POST", path, message.ToBody(), "", message.Files)
+	r := router.New("POST", path, resp.ToBody(), "", resp.Files)
 	go r.Request()
 }

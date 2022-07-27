@@ -8,13 +8,12 @@ import (
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/file"
 	"github.com/jnsougata/disgo/core/member"
-	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
 	"github.com/jnsougata/disgo/core/utils"
 )
 
-type Message struct {
+type Response struct {
 	Content         string
 	Embed           embed.Embed
 	Embeds          []embed.Embed
@@ -27,7 +26,7 @@ type Message struct {
 	Files           []file.File
 }
 
-func (m *Message) ToBody() map[string]interface{} {
+func (m *Response) ToBody() map[string]interface{} {
 	flag := 0
 	body := map[string]interface{}{}
 	if m.Content != "" {
@@ -105,12 +104,12 @@ type Data struct {
 }
 
 type Interaction struct {
-	ID             string        `json:"id"`
-	ApplicationID  string        `json:"application_id"`
+	Id             string        `json:"id"`
+	ApplicationId  string        `json:"application_id"`
 	Type           int           `json:"type"`
 	Data           Data          `json:"data"`
-	GuildID        string        `json:"guild_id"`
-	ChannelID      string        `json:"channel_id"`
+	GuildId        string        `json:"guild_id"`
+	ChannelId      string        `json:"channel_id"`
 	Member         member.Member `json:"member"`
 	User           user.User     `json:"user"`
 	Token          string        `json:"token"`
@@ -128,8 +127,8 @@ func FromData(payload interface{}) *Interaction {
 	return i
 }
 
-func (i *Interaction) SendResponse(message Message) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+func (i *Interaction) SendResponse(message Response) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	body := map[string]interface{}{
 		"type": 4,
 		"data": message.ToBody(),
@@ -139,7 +138,7 @@ func (i *Interaction) SendResponse(message Message) {
 }
 
 func (i *Interaction) Ack() {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	body := map[string]interface{}{"type": 1}
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
@@ -150,13 +149,13 @@ func (i *Interaction) Defer(ephemeral bool) {
 	if ephemeral {
 		body["data"] = map[string]interface{}{"flags": 1 << 6}
 	}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendModal(modal modal.Modal) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+func (i *Interaction) SendModal(modal component.Modal) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()
 }
@@ -166,13 +165,13 @@ func (i *Interaction) SendAutoComplete(choices ...command.Choice) {
 		"type": 8,
 		"data": map[string]interface{}{"choices": choices},
 	}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
-func (i *Interaction) SendFollowup(message Message) {
-	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)
-	r := router.New("POST", path, message.ToBody(), "", message.Files)
+func (i *Interaction) SendFollowup(resp Response) {
+	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
+	r := router.New("POST", path, resp.ToBody(), "", resp.Files)
 	go r.Request()
 }
