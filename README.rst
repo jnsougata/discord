@@ -20,7 +20,6 @@ Quick Example
 
     func main() {
         b := bot.New(intents.All(), false)
-        b.AddCommand(cmd, handler)
         b.OnReady(onReady)
         b.OnMessage(onMessage)
         b.Run(os.Getenv("DISCORD_TOKEN"))
