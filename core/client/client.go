@@ -224,7 +224,6 @@ func eventHandler(event string, data map[string]interface{}) {
 				go callback.(func(b user.User, cctx component.Context))(*bot, *cctx)
 				delete(component.CallbackTasks, cctx.Data.CustomId)
 			}
-
 		default:
 			log.Println("Unknown interaction type: ", ctx.Type)
 		}
