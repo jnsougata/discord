@@ -1,8 +1,13 @@
 package consts
 
 const (
-	OnReady = "READY"
-	// onResumed                      = "RESUMED"
+	OnReady             = "READY"
+	OnGuildCreate       = "GUILD_CREATE"
+	OnGuildDelete       = "GUILD_DELETE"
+	OnInteractionCreate = "INTERACTION_CREATE"
+	OnMessageCreate     = "MESSAGE_CREATE"
+	OnSocketReceive     = "SOCKET_RECEIVE"
+	// OnResumed                      = "RESUMED"
 	// onReconnect                 	  = "RECONNECT" --> handle internally
 	// onInvalidSession 		      = "INVALID_SESSION" --> handle internally
 	// onAppCmdPermsUpdate            = "APPLICATION_COMMAND_PERMISSIONS_UPDATE"
@@ -19,9 +24,9 @@ const (
 	// onThreadDelete                 = "THREAD_DELETE"
 	// onThreadListSync               = "THREAD_LIST_SYNC"
 	// onThreadMembersUpdate          = "THREAD_MEMBERS_UPDATE"
-	OnGuildCreate = "GUILD_CREATE"
+	// OnGuildCreate 				  = "GUILD_CREATE"
 	// onGuildUpdate                  = "GUILD_UPDATE"
-	OnGuildDelete = "GUILD_DELETE"
+	// OnGuildDelete 				  = "GUILD_DELETE"
 	// onGuildBanAdd                  = "GUILD_BAN_ADD"
 	// onGuildBanRemove               = "GUILD_BAN_REMOVE"
 	// onGuildEmojisUpdate            = "GUILD_EMOJIS_UPDATE"
@@ -42,10 +47,10 @@ const (
 	// onIntegrationCreate            = "INTEGRATION_CREATE"
 	// onIntegrationUpdate            = "INTEGRATION_UPDATE"
 	// onIntegrationDelete            = "INTEGRATION_DELETE"
-	OnInteractionCreate = "INTERACTION_CREATE"
+	// OnInteractionCreate 			  = "INTERACTION_CREATE"
 	// onInviteCreate                 = "INVITE_CREATE"
 	// onInviteDelete                 = "INVITE_DELETE"
-	OnMessageCreate = "MESSAGE_CREATE"
+	// OnMessageCreate 				  = "MESSAGE_CREATE"
 	// onMessageUpdate                = "MESSAGE_UPDATE"
 	// onMessageDelete                = "MESSAGE_DELETE"
 	// onMessageDeleteBulk            = "MESSAGE_DELETE_BULK"
@@ -62,4 +67,5 @@ const (
 	// onVoiceStateUpdate             = "VOICE_STATE_UPDATE"
 	// onVoiceServerUpdate            = "VOICE_SERVER_UPDATE"
 	// onWebhooksUpdate               = "WEBHOOKS_UPDATE"
+	// OnSocketReceive 				  = "SOCKET_RECEIVE"
 )

@@ -35,6 +35,10 @@ func (bot *Bot) AddCommand(
 	bot.core.Queue(command, handler)
 }
 
+func (bot *Bot) OnSocketReceive(handler func(payload map[string]interface{})) {
+	bot.core.AddHandler(consts.OnSocketReceive, handler)
+}
+
 func (bot *Bot) OnMessage(handler func(bot user.User, message message.Message)) {
 	bot.core.AddHandler(consts.OnMessageCreate, handler)
 }

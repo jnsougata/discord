@@ -43,13 +43,10 @@ var commandHooks = map[string]interface{}{}
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
-	var payload map[string]interface{}
+	var payload map[string]string
 	bytes, _ := io.ReadAll(data.Body)
-	err := json.Unmarshal(bytes, &payload)
-	if err != nil {
-		panic(err)
-	}
-	return payload["url"].(string) + "?v=10&encoding=json"
+	_ = json.Unmarshal(bytes, &payload)
+	return fmt.Sprintf("%s?v=10&encoding=json", payload["url"])
 }
 
 type Client struct {
@@ -153,6 +150,10 @@ func (c *Client) Run(token string) {
 			go c.keepAlive(conn, int(interval))
 		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
+		if h, ok := eventHooks[consts.OnSocketReceive]; ok {
+			handler := h.(func(map[string]interface{}))
+			go handler(wsmsg.Data)
+		}
 	}
 }
 
