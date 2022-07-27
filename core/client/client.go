@@ -212,7 +212,7 @@ func eventHandler(event string, data map[string]interface{}) {
 				onTimeoutHandler := tmp[1].(func(b user.User, i component.Context))
 				duration := tmp[0].(float64)
 				delete(component.TimeoutTasks, cctx.Data.CustomId)
-				go ScheduleTimeoutTask(duration, *bot, *cctx, onTimeoutHandler)
+				go scheduleTimeoutTask(duration, *bot, *cctx, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
@@ -231,11 +231,8 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 }
 
-func ScheduleTimeoutTask(
-	timeout float64,
-	user user.User,
-	ci component.Context,
-	handler func(bot user.User, interaction component.Context)) {
+func scheduleTimeoutTask(timeout float64, user user.User, cctx component.Context,
+	handler func(bot user.User, cctx component.Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
-	handler(user, ci)
+	handler(user, cctx)
 }
