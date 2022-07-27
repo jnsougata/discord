@@ -9,6 +9,7 @@ import (
 	"github.com/jnsougata/disgo/core/modal"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
+	"github.com/jnsougata/disgo/core/utils"
 	"log"
 )
 
@@ -24,12 +25,14 @@ var CallbackFactory = map[string]interface{}{}
 
 type Message struct {
 	Content         string
+	Embed           embed.Embed
 	Embeds          []embed.Embed
 	AllowedMentions []string
 	TTS             bool
 	Ephemeral       bool
 	SuppressEmbeds  bool
 	View            View
+	File            file.File
 	Files           []file.File
 }
 
@@ -39,9 +42,18 @@ func (m *Message) ToBody() map[string]interface{} {
 	if m.Content != "" {
 		body["content"] = m.Content
 	}
-	if len(m.Embeds) > 0 && len(m.Embeds) <= 25 {
-		body["embeds"] = m.Embeds
+	var finalEmbeds []embed.Embed
+	if utils.CheckTrueEmbed(m.Embed) {
+		finalEmbeds = append(finalEmbeds, m.Embed)
 	}
+	if len(m.Embeds) > 0 && len(m.Embeds) < 25 {
+		for _, em := range m.Embeds {
+			if utils.CheckTrueEmbed(em) {
+				finalEmbeds = append(finalEmbeds, em)
+			}
+		}
+	}
+	body["embeds"] = finalEmbeds
 	if len(m.AllowedMentions) > 0 && len(m.AllowedMentions) <= 100 {
 		body["allowed_mentions"] = m.AllowedMentions
 	}
@@ -60,13 +72,22 @@ func (m *Message) ToBody() map[string]interface{} {
 	if len(m.View.ActionRows) > 0 {
 		body["components"] = m.View.ToComponent()
 	}
-	if len(m.Files) > 0 {
+	var finalFiles []file.File
+	if utils.CheckTrueFile(m.File) {
+		finalFiles = append(finalFiles, m.File)
+	}
+	for _, f := range m.Files {
+		if utils.CheckTrueFile(f) {
+			finalFiles = append(finalFiles, f)
+		}
+	}
+	if len(finalFiles) > 0 {
 		body["attachments"] = []map[string]interface{}{}
-		for i, file := range m.Files {
+		for i, f := range finalFiles {
 			a := map[string]interface{}{
 				"id":          i,
-				"filename":    file.Name,
-				"description": file.Description,
+				"filename":    f.Name,
+				"description": f.Description,
 			}
 			body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
 		}
@@ -252,17 +273,10 @@ func (i *Interaction) SendResponse(message Message) {
 	go r.Request()
 }
 
-func (i *Interaction) Ack() {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	body := map[string]interface{}{"type": 1}
-	r := router.New("POST", path, body, "", nil)
-	go r.Request()
-}
-
 func (i *Interaction) Defer() {
-	payload := map[string]interface{}{"type": 6}
+	body := map[string]interface{}{"type": 6}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.ID, i.Token)
-	r := router.New("POST", path, payload, "", nil)
+	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 

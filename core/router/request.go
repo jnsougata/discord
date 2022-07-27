@@ -31,8 +31,12 @@ func (obj *Router) Request() *http.Response {
 	if err != nil {
 		log.Println(err)
 	}
-	b, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(b))
+	if resp.StatusCode > 304 {
+		em := make(map[string]interface{})
+		b, _ := io.ReadAll(resp.Body)
+		_ = json.Unmarshal(b, &em)
+		log.Println(em)
+	}
 	return resp
 }
 
