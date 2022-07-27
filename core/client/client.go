@@ -182,9 +182,7 @@ func eventHandler(event string, data map[string]interface{}) {
 			eventHook := eventHooks[event].(func(bot user.User, interaction interaction.Interaction))
 			go eventHook(*bot, *i)
 		}
-
 		switch i.Type {
-
 		case 1:
 			// interaction ping
 		case 2:
@@ -193,25 +191,30 @@ func eventHandler(event string, data map[string]interface{}) {
 				go commandHook(*bot, *i, i.Data.Options...)
 			}
 		case 3:
-			factory := component.CallbackFactory
-			componentInteraction := component.FromData(data)
-			switch componentInteraction.Data.Type {
+			factory := component.CallbackTasks
+			ci := component.FromData(data)
+			switch ci.Data.ComponentType {
 			case 2:
-				if _, ok := factory[componentInteraction.Data.Id]; ok {
-					callback := factory[componentInteraction.Data.Id].(func(b user.User, i component.Interaction))
-					go callback(*bot, *componentInteraction)
+				if _, ok := factory[ci.Data.CustomId]; ok {
+					callback := factory[ci.Data.CustomId].(func(b user.User, i component.Interaction))
+					go callback(*bot, *ci)
 				}
 			case 3:
-				if _, ok := factory[componentInteraction.Data.Id]; ok {
-					callback := factory[componentInteraction.Data.Id].(func(b user.User, i component.Interaction, v ...string))
-					go callback(*bot, *componentInteraction, componentInteraction.Data.Values...)
+				if _, ok := factory[ci.Data.CustomId]; ok {
+					callback := factory[ci.Data.CustomId].(func(b user.User, i component.Interaction, v ...string))
+					go callback(*bot, *ci, ci.Data.Values...)
 				}
 
 			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
-			// handle modal submit interaction
+			ci := component.FromData(data)
+			callback, ok := component.CallbackTasks[ci.Data.CustomId]
+			if ok {
+				go callback.(func(b user.User, i component.Interaction))(*bot, *ci)
+				delete(component.CallbackTasks, ci.Data.CustomId)
+			}
 
 		default:
 			log.Println("Unknown interaction type: ", i.Type)

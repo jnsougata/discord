@@ -99,7 +99,7 @@ type Data struct {
 	Type     int                    `json:"type"`
 	Resolved map[string]interface{} `json:"resolved"`
 	Options  []Option               `json:"options"`
-	GuildID  string                 `json:"guild_id"`
+	GuildId  string                 `json:"guild_id"`
 	TargetId string                 `json:"target_id"`
 }
 

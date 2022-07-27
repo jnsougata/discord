@@ -21,8 +21,8 @@ const (
 	LinkButton  = 5
 )
 
-var CallbackFactory = map[string]interface{}{}
-var Ids = map[string]bool{}
+var CallbackTasks = map[string]interface{}{}
+var TimeoutTasks = map[string]interface{}{}
 
 type Response struct {
 	Content         string
@@ -96,38 +96,40 @@ func (m *Response) ToBody() map[string]interface{} {
 	return body
 }
 
-type SelectOption struct {
-	Label       string        `json:"label"`
-	Value       string        `json:"value"`
-	Description string        `json:"description,omitempty"`
-	Emoji       emoji.Partial `json:"emoji,omitempty"`
-	Default     bool          `json:"default,omitempty"`
-}
-
 type Button struct {
 	Style    int
 	Label    string
 	Emoji    emoji.Partial
-	CustomId string
 	URL      string
 	Disabled bool
+	CustomId string
+}
+
+func (b *Button) OnClick(handler func(bot user.User, interaction Interaction)) {
+	b.CustomId = utils.AssignId("")
+	CallbackTasks[b.CustomId] = handler
 }
 
 func (b *Button) ToComponent() map[string]interface{} {
-	if b.CustomId == "" && b.Style != LinkButton {
-		panic("CustomId is required for each Button")
+	b.CustomId = utils.AssignId(b.CustomId)
+	btn := map[string]interface{}{
+		"type":      2,
+		"custom_id": b.CustomId,
 	}
-	btn := map[string]interface{}{"type": 2, "custom_id": b.CustomId}
 	if b.Style != 0 {
 		btn["style"] = b.Style
+	} else {
+		btn["style"] = BlueButton
 	}
 	if b.Label != "" {
 		btn["label"] = b.Label
+	} else {
+		btn["label"] = "Button"
 	}
-	if b.Emoji.ID != "" {
+	if b.Emoji.Id != "" {
 		btn["emoji"] = b.Emoji
 	}
-	if b.URL != "" {
+	if b.URL != "" && b.Style == LinkButton {
 		btn["url"] = b.URL
 	}
 	if b.Disabled {
@@ -136,8 +138,12 @@ func (b *Button) ToComponent() map[string]interface{} {
 	return btn
 }
 
-func (b *Button) Callback(handler func(bot user.User, interaction Interaction)) {
-	CallbackFactory[b.CustomId] = handler
+type SelectOption struct {
+	Label       string        `json:"label"`
+	Value       string        `json:"value"`
+	Description string        `json:"description,omitempty"`
+	Emoji       emoji.Partial `json:"emoji,omitempty"`
+	Default     bool          `json:"default,omitempty"`
 }
 
 type SelectMenu struct {
@@ -150,14 +156,13 @@ type SelectMenu struct {
 	Disabled    bool
 }
 
-func (s *SelectMenu) Callback(handler func(bot user.User, interaction Interaction, values ...string)) {
-	CallbackFactory[s.CustomId] = handler
+func (s *SelectMenu) OnSelection(handler func(bot user.User, interaction Interaction, values ...string)) {
+	s.CustomId = utils.AssignId("")
+	CallbackTasks[s.CustomId] = handler
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
-	if s.CustomId == "" {
-		log.Println("CustomId is required for each SelectMenu")
-	}
+	s.CustomId = utils.AssignId(s.CustomId)
 	menu := map[string]interface{}{"type": 3, "custom_id": s.CustomId}
 	if s.Placeholder != "" {
 		menu["placeholder"] = s.Placeholder
@@ -187,67 +192,77 @@ type ActionRow struct {
 }
 
 type View struct {
+	Timeout    float64
 	ActionRows []ActionRow
+	CustomId   string
+}
+
+func (v *View) OnTimeout(handler func(bot user.User, interaction Interaction)) {
+	TimeoutTasks[".."] = handler
 }
 
 func (v *View) ToComponent() []interface{} {
+	if v.Timeout == 0 {
+		v.Timeout = 15 * 60
+	}
+	var undo = map[string]bool{}
 	var c []interface{}
 	if len(v.ActionRows) > 0 && len(v.ActionRows) <= 5 {
 		for _, row := range v.ActionRows {
-			numButtons := 0
+			num := 0
 			tmp := map[string]interface{}{
 				"type":       1,
 				"components": []interface{}{},
 			}
 			for _, button := range row.Buttons {
-				numButtons++
-				if _, ok := Ids[button.CustomId]; !ok {
-					if numButtons <= 5 {
-						Ids[button.CustomId] = true
-						tmp["components"] = append(tmp["components"].([]interface{}), button.ToComponent())
-					} else {
-						log.Println("An Action Row can either contain max 5x Buttons")
-					}
-				} else {
-					log.Println(
-						fmt.Sprintf("CustomId `%s` already used with a previous component", button.CustomId))
+				if num < 5 {
+					undo[button.CustomId] = true
+					tmp["components"] = append(tmp["components"].([]interface{}), button.ToComponent())
 				}
+				num++
 			}
 			if len(row.SelectMenu.Options) > 0 {
-				if _, ok := Ids[row.SelectMenu.CustomId]; !ok {
-					if numButtons == 0 {
-						Ids[row.SelectMenu.CustomId] = true
-						tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
-					} else {
-						log.Println("An Action Row can contain one of these: (1x SelectMenu) or (max 5x Buttons)")
-					}
+				if num == 0 {
+					undo[row.SelectMenu.CustomId] = true
+					tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
 				} else {
-					log.Println(
-						fmt.Sprintf(
-							"CustomId `%s` already used with a previous component", row.SelectMenu.CustomId))
+					log.Println("Single ActionRow can contain either 1x SelectMenu or max 5x Buttons")
 				}
 			}
 			if len(tmp["components"].([]interface{})) > 0 {
 				c = append(c, tmp)
+				go utils.ScheduleDeletion(v.Timeout, CallbackTasks, undo)
 			}
 		}
 	}
 	return c
 }
 
+type Component struct {
+	CustomId string   `json:"custom_id"`
+	Type     int      `json:"type"`
+	Value    string   `json:"value"`
+	Values   []string `json:"values"`
+}
+
+type Row struct {
+	Components []Component
+}
+
 type Data struct {
-	Type   int      `json:"component_type"`
-	Id     string   `json:"custom_id"`
-	Values []string `json:"values"`
+	ComponentType int      `json:"component_type"`
+	CustomId      string   `json:"custom_id"`
+	Values        []string `json:"values"`
+	Components    []Row    `json:"components"`
 }
 
 type Interaction struct {
 	ID             string                 `json:"id"`
-	ApplicationID  string                 `json:"application_id"`
+	ApplicationId  string                 `json:"application_id"`
 	Type           int                    `json:"type"`
 	Data           Data                   `json:"data"`
-	GuildID        string                 `json:"guild_id"`
-	ChannelID      string                 `json:"channel_id"`
+	GuildId        string                 `json:"guild_id"`
+	ChannelId      string                 `json:"channel_id"`
 	Member         member.Member          `json:"member"`
 	User           user.User              `json:"user"`
 	Token          string                 `json:"token"`
@@ -286,7 +301,7 @@ func (i *Interaction) SendModal(modal Modal) {
 }
 
 func (i *Interaction) SendFollowup(resp Response) {
-	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationID, i.Token)
+	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
 	r := router.New("POST", path, resp.ToBody(), "", resp.Files)
 	go r.Request()
 }

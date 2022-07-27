@@ -2,7 +2,7 @@ package component
 
 import (
 	"github.com/jnsougata/disgo/core/user"
-	"log"
+	"github.com/jnsougata/disgo/core/utils"
 )
 
 const (
@@ -22,16 +22,7 @@ type TextInput struct {
 }
 
 func (inp *TextInput) ToComponent() map[string]interface{} {
-	if inp.CustomId == "" {
-		log.Println("CustomId is required for each TextInput")
-		return map[string]interface{}{}
-	}
-	if Ids[inp.CustomId] {
-		log.Println("CustomId must be unique for each TextInput")
-		return map[string]interface{}{}
-	} else {
-		Ids[inp.CustomId] = true
-	}
+	inp.CustomId = utils.AssignId(inp.CustomId)
 	field := map[string]interface{}{
 		"type":      4,
 		"custom_id": inp.CustomId,
@@ -41,6 +32,8 @@ func (inp *TextInput) ToComponent() map[string]interface{} {
 	}
 	if inp.Style != 0 {
 		field["style"] = inp.Style
+	} else {
+		field["style"] = ShortInput
 	}
 	if inp.Value != "" {
 		field["value"] = inp.Value
@@ -65,21 +58,18 @@ type Modal struct {
 	SelectMenus []SelectMenu
 }
 
-func (i *Modal) Callback(handler func(bot user.User, interaction Interaction)) {
-	if i.CustomId == "" {
-		log.Println("CustomId is required for each Modal")
-		return
-	}
-	CallbackFactory[i.CustomId] = handler
+func (m *Modal) OnSubmit(handler func(bot user.User, interaction Interaction)) {
+	m.CustomId = utils.AssignId(m.CustomId)
+	CallbackTasks[m.CustomId] = handler
 }
 
-func (i *Modal) ToBody() map[string]interface{} {
+func (m *Modal) ToBody() map[string]interface{} {
 	modal := map[string]interface{}{}
-	modal["title"] = i.Title
-	modal["custom_id"] = i.CustomId
+	modal["title"] = m.Title
+	modal["custom_id"] = utils.AssignId(m.CustomId)
 	modal["components"] = []map[string]interface{}{}
-	if len(i.Fields) > 0 {
-		for _, field := range i.Fields {
+	if len(m.Fields) > 0 {
+		for _, field := range m.Fields {
 			row := map[string]interface{}{
 				"type":       1,
 				"components": []map[string]interface{}{},
@@ -88,8 +78,8 @@ func (i *Modal) ToBody() map[string]interface{} {
 			modal["components"] = append(modal["components"].([]map[string]interface{}), row)
 		}
 	}
-	if len(i.SelectMenus) > 0 {
-		for _, menu := range i.SelectMenus {
+	if len(m.SelectMenus) > 0 {
+		for _, menu := range m.SelectMenus {
 			row := map[string]interface{}{
 				"type":       1,
 				"components": []map[string]interface{}{},
