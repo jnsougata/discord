@@ -35,15 +35,13 @@ func (m *Response) ToBody() map[string]interface{} {
 	if utils.CheckTrueEmbed(m.Embed) {
 		m.Embeds = append([]embed.Embed{m.Embed}, m.Embeds...)
 	}
-	if len(m.Embeds) > 0 && len(m.Embeds) < 10 {
-		for i, em := range m.Embeds {
-			if !utils.CheckTrueEmbed(em) {
-				m.Embeds = append(m.Embeds[:i], m.Embeds[i+1:]...)
-			}
-			if i > 10 {
-				m.Embeds = append(m.Embeds[:i], m.Embeds[i+1:]...)
-			}
+	for i, em := range m.Embeds {
+		if !utils.CheckTrueEmbed(em) {
+			m.Embeds = append(m.Embeds[:i], m.Embeds[i+1:]...)
 		}
+	}
+	if len(m.Embeds) > 10 {
+		m.Embeds = m.Embeds[:10]
 	}
 	body["embeds"] = m.Embeds
 	if len(m.AllowedMentions) > 0 && len(m.AllowedMentions) <= 100 {
@@ -125,13 +123,13 @@ func FromData(payload interface{}) *Context {
 	return i
 }
 
-func (c *Context) SendResponse(message Response) {
+func (c *Context) SendResponse(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body := map[string]interface{}{
 		"type": 4,
-		"data": message.ToBody(),
+		"data": resp.ToBody(),
 	}
-	r := router.New("POST", path, body, "", message.Files)
+	r := router.New("POST", path, body, "", resp.Files)
 	go r.Request()
 }
 
