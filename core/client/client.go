@@ -197,14 +197,12 @@ func eventHandler(event string, data map[string]interface{}) {
 				if ok {
 					callback := cb.(func(b user.User, ctx component.Context))
 					go callback(*bot, *ctx)
-					delete(factory, ctx.Data.CustomId)
 				}
 			case 3:
 				cb, ok := factory[ctx.Data.CustomId]
 				if ok {
 					callback := cb.(func(b user.User, ctx component.Context, values ...string))
 					go callback(*bot, *ctx, ctx.Data.Values...)
-					delete(factory, ctx.Data.CustomId)
 				}
 			}
 			tmp, ok := component.TimeoutTasks[ctx.Data.CustomId]

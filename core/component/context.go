@@ -82,13 +82,7 @@ func (c *Context) DeleteOriginalResponse() {
 	go r.Request()
 }
 
-func (c *Context) EditOriginalResponse(resp Message) {
-	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := router.New("PATCH", path, resp.ToBody(), "", resp.Files)
-	go r.Request()
-}
-
-func (c *Context) SendUpdate(resp Message) {
+func (c *Context) EditOriginalMessage(resp Message) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
 	body := map[string]interface{}{"type": 7, "data": resp.ToBody()}
 	r := router.New("POST", path, body, "", resp.Files)
