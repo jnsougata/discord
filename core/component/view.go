@@ -25,7 +25,7 @@ type Button struct {
 	URL      string
 	Disabled bool
 	CustomId string
-	OnClick  func(bot user.User, ctx Context)
+	OnClick  func(bot user.User, cc Context)
 }
 
 func (b *Button) ToComponent() map[string]interface{} {
@@ -97,7 +97,7 @@ type SelectMenu struct {
 	MinValues   int
 	MaxValues   int
 	Disabled    bool
-	OnSelection func(bot user.User, ctx Context, values ...string)
+	OnSelection func(bot user.User, cc Context, values ...string)
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
@@ -150,6 +150,20 @@ type View struct {
 func (v *View) AddRow(row ActionRow) {
 	if len(v.ActionRows) < 5 {
 		v.ActionRows = append(v.ActionRows, row)
+	}
+}
+
+func (v *View) AddButtons(buttons ...Button) {
+	if len(v.ActionRows) < 5 {
+		row := ActionRow{Buttons: buttons}
+		v.ActionRows = append([]ActionRow{row}, v.ActionRows...)
+	}
+}
+
+func (v *View) AddSelectMenu(menu SelectMenu) {
+	if len(v.ActionRows) < 5 {
+		row := ActionRow{SelectMenu: menu}
+		v.ActionRows = append([]ActionRow{row}, v.ActionRows...)
 	}
 }
 

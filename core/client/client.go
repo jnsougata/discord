@@ -84,8 +84,10 @@ func (c *Client) AddHandler(name string, fn interface{}) {
 	eventHooks[name] = fn
 }
 
-func (c *Client) Queue(apc command.ApplicationCommand) {
-	queue = append(queue, apc)
+func (c *Client) Queue(commands ...command.ApplicationCommand) {
+	for _, com := range commands {
+		queue = append(queue, com)
+	}
 }
 
 func registerCommand(com command.ApplicationCommand, token string, applicationId string) {
@@ -190,36 +192,36 @@ func eventHandler(event string, data map[string]interface{}) {
 			}
 		case 3:
 			factory := component.CallbackTasks
-			ctx := component.FromData(data)
-			switch ctx.Data.ComponentType {
+			cc := component.FromData(data)
+			switch cc.Data.ComponentType {
 			case 2:
-				cb, ok := factory[ctx.Data.CustomId]
+				cb, ok := factory[cc.Data.CustomId]
 				if ok {
 					callback := cb.(func(b user.User, ctx component.Context))
-					go callback(*bot, *ctx)
+					go callback(*bot, *cc)
 				}
 			case 3:
-				cb, ok := factory[ctx.Data.CustomId]
+				cb, ok := factory[cc.Data.CustomId]
 				if ok {
 					callback := cb.(func(b user.User, ctx component.Context, values ...string))
-					go callback(*bot, *ctx, ctx.Data.Values...)
+					go callback(*bot, *cc, cc.Data.Values...)
 				}
 			}
-			tmp, ok := component.TimeoutTasks[ctx.Data.CustomId]
+			tmp, ok := component.TimeoutTasks[cc.Data.CustomId]
 			if ok {
 				onTimeoutHandler := tmp[1].(func(b user.User, i component.Context))
 				duration := tmp[0].(float64)
-				delete(component.TimeoutTasks, ctx.Data.CustomId)
-				go scheduleTimeoutTask(duration, *bot, *ctx, onTimeoutHandler)
+				delete(component.TimeoutTasks, cc.Data.CustomId)
+				go scheduleTimeoutTask(duration, *bot, *cc, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
-			cctx := component.FromData(data)
-			callback, ok := component.CallbackTasks[cctx.Data.CustomId]
+			cc := component.FromData(data)
+			callback, ok := component.CallbackTasks[cc.Data.CustomId]
 			if ok {
-				go callback.(func(b user.User, cctx component.Context))(*bot, *cctx)
-				delete(component.CallbackTasks, cctx.Data.CustomId)
+				go callback.(func(b user.User, cctx component.Context))(*bot, *cc)
+				delete(component.CallbackTasks, cc.Data.CustomId)
 			}
 		default:
 			log.Println("Unknown interaction type: ", i.Type)
@@ -228,8 +230,8 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 }
 
-func scheduleTimeoutTask(timeout float64, user user.User, cctx component.Context,
+func scheduleTimeoutTask(timeout float64, user user.User, cc component.Context,
 	handler func(bot user.User, cctx component.Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
-	handler(user, cctx)
+	handler(user, cc)
 }

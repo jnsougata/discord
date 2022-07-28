@@ -28,8 +28,8 @@ func (bot *Bot) Run(token string) {
 	bot.core.Run(token)
 }
 
-func (bot *Bot) AddCommand(command command.ApplicationCommand) {
-	bot.core.Queue(command)
+func (bot *Bot) AddCommands(commands ...command.ApplicationCommand) {
+	bot.core.Queue(commands...)
 }
 
 func (bot *Bot) OnSocketReceive(handler func(payload map[string]interface{})) {
