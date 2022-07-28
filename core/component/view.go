@@ -1,13 +1,9 @@
 package component
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/jnsougata/disgo/core/embed"
 	"github.com/jnsougata/disgo/core/emoji"
 	"github.com/jnsougata/disgo/core/file"
-	"github.com/jnsougata/disgo/core/member"
-	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
 	"github.com/jnsougata/disgo/core/utils"
 	"log"
@@ -24,7 +20,7 @@ const (
 var CallbackTasks = map[string]interface{}{}
 var TimeoutTasks = map[string][]interface{}{}
 
-type Response struct {
+type Message struct {
 	Content         string
 	Embed           embed.Embed
 	Embeds          []embed.Embed
@@ -37,7 +33,7 @@ type Response struct {
 	Files           []file.File
 }
 
-func (m *Response) ToBody() map[string]interface{} {
+func (m *Message) ToBody() map[string]interface{} {
 	flag := 0
 	body := map[string]interface{}{}
 	if m.Content != "" {
@@ -99,12 +95,14 @@ type Button struct {
 	URL      string
 	Disabled bool
 	CustomId string
-	OnClick  func(bot user.User, cctx Context)
+	OnClick  func(bot user.User, ctx Context)
 }
 
 func (b *Button) ToComponent() map[string]interface{} {
 	b.CustomId = utils.AssignId("")
-	CallbackTasks[b.CustomId] = b.OnClick
+	if b.OnClick != nil {
+		CallbackTasks[b.CustomId] = b.OnClick
+	}
 	btn := map[string]interface{}{
 		"type":      2,
 		"custom_id": b.CustomId,
@@ -147,12 +145,14 @@ type SelectMenu struct {
 	MinValues   int
 	MaxValues   int
 	Disabled    bool
-	OnSelection func(bot user.User, cctx Context, values ...string)
+	OnSelection func(bot user.User, ctx Context, values ...string)
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
 	s.CustomId = utils.AssignId("")
-	CallbackTasks[s.CustomId] = s.OnSelection
+	if s.OnSelection != nil {
+		CallbackTasks[s.CustomId] = s.OnSelection
+	}
 	menu := map[string]interface{}{"type": 3, "custom_id": s.CustomId}
 	if s.Placeholder != "" {
 		menu["placeholder"] = s.Placeholder
@@ -203,7 +203,9 @@ func (v *View) ToComponent() []interface{} {
 			for _, button := range row.Buttons {
 				if num < 5 {
 					undo[button.CustomId] = true
-					TimeoutTasks[button.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					if v.OnTimeout != nil {
+						TimeoutTasks[button.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					}
 					tmp["components"] = append(tmp["components"].([]interface{}), button.ToComponent())
 					num++
 				}
@@ -211,7 +213,9 @@ func (v *View) ToComponent() []interface{} {
 			if len(row.SelectMenu.Options) > 0 {
 				if num == 0 {
 					undo[row.SelectMenu.CustomId] = true
-					TimeoutTasks[row.SelectMenu.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					if v.OnTimeout != nil {
+						TimeoutTasks[row.SelectMenu.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					}
 					tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
 				} else {
 					log.Println("Single ActionRow can contain either 1x SelectMenu or max 5x Buttons")
@@ -224,84 +228,4 @@ func (v *View) ToComponent() []interface{} {
 		}
 	}
 	return c
-}
-
-type Component struct {
-	CustomId string   `json:"custom_id"`
-	Type     int      `json:"type"`
-	Value    string   `json:"value"`
-	Values   []string `json:"values"`
-}
-
-type Row struct {
-	Components []Component
-}
-
-type Data struct {
-	ComponentType int      `json:"component_type"`
-	CustomId      string   `json:"custom_id"`
-	Values        []string `json:"values"`
-	Components    []Row    `json:"components"`
-}
-
-type Context struct {
-	ID             string                 `json:"id"`
-	ApplicationId  string                 `json:"application_id"`
-	Type           int                    `json:"type"`
-	Data           Data                   `json:"data"`
-	GuildId        string                 `json:"guild_id"`
-	ChannelId      string                 `json:"channel_id"`
-	Member         member.Member          `json:"member"`
-	User           user.User              `json:"user"`
-	Token          string                 `json:"token"`
-	Version        int                    `json:"version"`
-	Message        map[string]interface{} `json:"message"`
-	AppPermissions string                 `json:"app_permissions"`
-	Locale         string                 `json:"locale"`
-	GuildLocale    string                 `json:"guild_locale"`
-}
-
-func FromData(payload interface{}) *Context {
-	i := &Context{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, i)
-	return i
-}
-
-func (c *Context) SendResponse(resp Response) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
-	r := router.New(
-		"POST", path, map[string]interface{}{"type": 4, "data": resp.ToBody()}, "", resp.Files)
-	go r.Request()
-}
-
-func (c *Context) Defer() {
-	body := map[string]interface{}{"type": 6}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
-	r := router.New("POST", path, body, "", nil)
-	go r.Request()
-}
-
-func (c *Context) SendModal(modal Modal) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
-	r := router.New("POST", path, modal.ToBody(), "", nil)
-	go r.Request()
-}
-
-func (c *Context) SendFollowup(resp Response) {
-	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	r := router.New("POST", path, resp.ToBody(), "", resp.Files)
-	go r.Request()
-}
-
-func (c *Context) DeleteOriginalResponse() {
-	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := router.Minimal("DELETE", path, nil, "")
-	go r.Request()
-}
-
-func (c *Context) EditOriginalResponse(resp Response) {
-	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := router.New("PATCH", path, resp.ToBody(), "", resp.Files)
-	go r.Request()
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/jnsougata/disgo/core/command"
 	"github.com/jnsougata/disgo/core/consts"
 	"github.com/jnsougata/disgo/core/guild"
-	"github.com/jnsougata/disgo/core/interaction"
 	"github.com/jnsougata/disgo/core/message"
 	"github.com/jnsougata/disgo/core/user"
 )
@@ -29,10 +28,8 @@ func (bot *Bot) Run(token string) {
 	bot.core.Run(token)
 }
 
-func (bot *Bot) AddCommand(
-	command command.SlashCommand,
-	handler func(bot user.User, interaction interaction.Context, options ...interaction.Option)) {
-	bot.core.Queue(command, handler)
+func (bot *Bot) AddCommand(command command.ApplicationCommand) {
+	bot.core.Queue(command)
 }
 
 func (bot *Bot) OnSocketReceive(handler func(payload map[string]interface{})) {
@@ -47,7 +44,7 @@ func (bot *Bot) OnReady(handler func(bot user.User)) {
 	bot.core.AddHandler(consts.OnReady, handler)
 }
 
-func (bot *Bot) OnInteraction(handler func(bot user.User, interaction interaction.Context)) {
+func (bot *Bot) OnInteraction(handler func(bot user.User, ctx command.Context)) {
 	bot.core.AddHandler(consts.OnInteractionCreate, handler)
 }
 

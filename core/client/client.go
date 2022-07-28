@@ -37,7 +37,7 @@ type client struct {
 
 var bot *user.User
 var execLocked = true
-var queue []interface{}
+var queue []command.ApplicationCommand
 var eventHooks = map[string]interface{}{}
 var commandHooks = map[string]interface{}{}
 
@@ -84,36 +84,28 @@ func (c *Client) AddHandler(name string, fn interface{}) {
 	eventHooks[name] = fn
 }
 
-func (c *Client) Queue(apc any, hook interface{}) {
-	queue = append(queue, []interface{}{apc, hook})
+func (c *Client) Queue(apc command.ApplicationCommand) {
+	queue = append(queue, apc)
 }
 
-func registerCommand(com any, token string, applicationId string, hook interface{}) {
+func registerCommand(com command.ApplicationCommand, token string, applicationId string) {
 	var route string
-	switch com.(type) {
-	case command.SlashCommand:
-		c, _ := json.Marshal(com)
-		payload := map[string]interface{}{}
-		_ = json.Unmarshal(c, &payload)
-		guildId := payload["guild_id"].(string)
-		switch guildId {
-		case "":
-			route = fmt.Sprintf("/applications/%s/guilds/%s/commands", applicationId, guildId)
-			delete(payload, "guild_id")
-		default:
-			route = fmt.Sprintf("/applications/%s/commands", applicationId)
-		}
-		r := router.Minimal("POST", route, payload, token)
-		d := map[string]interface{}{}
-		body, _ := io.ReadAll(r.Request().Body)
-		_ = json.Unmarshal(body, &d)
-		_, ok := d["id"]
-		if ok {
-			commandHooks[d["id"].(string)] = hook
-		} else {
-			log.Fatal(
-				fmt.Sprintf("Failed to register command `%s`. Code %s", payload["name"], d["message"]))
-		}
+	data, hook, guildId := com.ToData()
+	if guildId != 0 {
+		route = fmt.Sprintf("/applications/%s/guilds/%v/commands", applicationId, guildId)
+	} else {
+		route = fmt.Sprintf("/applications/%s/commands", applicationId)
+	}
+	r := router.Minimal("POST", route, data, token)
+	d := map[string]interface{}{}
+	body, _ := io.ReadAll(r.Request().Body)
+	_ = json.Unmarshal(body, &d)
+	_, ok := d["id"]
+	if ok {
+		commandHooks[d["id"].(string)] = hook
+	} else {
+		log.Fatal(
+			fmt.Sprintf("Failed to register command {%s}. Code %s", com.Name, d["message"]))
 	}
 }
 
@@ -136,7 +128,7 @@ func (c *Client) Run(token string) {
 			b, _ := json.Marshal(wsmsg.Data)
 			_ = json.Unmarshal(b, &c)
 			for _, cmd := range queue {
-				go registerCommand(cmd.([]any)[0].(command.SlashCommand), token, c.Application.Id, cmd.([]any)[1])
+				go registerCommand(cmd, token, c.Application.Id)
 			}
 			bot = user.FromData(wsmsg.Data["user"].(map[string]interface{}))
 			execLocked = false
@@ -177,43 +169,50 @@ func eventHandler(event string, data map[string]interface{}) {
 
 	case consts.OnInteractionCreate:
 
-		ctx := interaction.FromData(data)
+		i := interaction.FromData(data)
 
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot user.User, ctx interaction.Context))
-			go eventHook(*bot, *ctx)
+			eventHook := eventHooks[event].(func(bot user.User, ctx interaction.Interaction))
+			go eventHook(*bot, *i)
 		}
-		switch ctx.Type {
+		switch i.Type {
 		case 1:
 			// interaction ping
 		case 2:
-			if _, ok := commandHooks[ctx.Data.Id]; ok {
-				hook := commandHooks[ctx.Data.Id].(func(bot user.User, ctx interaction.Context, ops ...interaction.Option))
-				go hook(*bot, *ctx, ctx.Data.Options...)
+			ctx := command.Context{
+				Id:            i.Id,
+				Token:         i.Token,
+				ApplicationId: i.ApplicationId,
+			}
+			if _, ok := commandHooks[i.Data.Id]; ok {
+				hook := commandHooks[i.Data.Id].(func(bot user.User, ctx command.Context, ops ...interaction.Option))
+				go hook(*bot, ctx, i.Data.Options...)
 			}
 		case 3:
 			factory := component.CallbackTasks
-			cctx := component.FromData(data)
-			switch cctx.Data.ComponentType {
+			ctx := component.FromData(data)
+			switch ctx.Data.ComponentType {
 			case 2:
-				if _, ok := factory[cctx.Data.CustomId]; ok {
-					callback := factory[cctx.Data.CustomId].(func(b user.User, cctx component.Context))
-					go callback(*bot, *cctx)
-					delete(factory, cctx.Data.CustomId)
+				cb, ok := factory[ctx.Data.CustomId]
+				if ok {
+					callback := cb.(func(b user.User, ctx component.Context))
+					go callback(*bot, *ctx)
+					delete(factory, ctx.Data.CustomId)
 				}
 			case 3:
-				if _, ok := factory[cctx.Data.CustomId]; ok {
-					callback := factory[cctx.Data.CustomId].(func(b user.User, i component.Context, v ...string))
-					go callback(*bot, *cctx, cctx.Data.Values...)
-					delete(factory, cctx.Data.CustomId)
+				cb, ok := factory[ctx.Data.CustomId]
+				if ok {
+					callback := cb.(func(b user.User, ctx component.Context, values ...string))
+					go callback(*bot, *ctx, ctx.Data.Values...)
+					delete(factory, ctx.Data.CustomId)
 				}
 			}
-			tmp, ok := component.TimeoutTasks[cctx.Data.CustomId]
+			tmp, ok := component.TimeoutTasks[ctx.Data.CustomId]
 			if ok {
 				onTimeoutHandler := tmp[1].(func(b user.User, i component.Context))
 				duration := tmp[0].(float64)
-				delete(component.TimeoutTasks, cctx.Data.CustomId)
-				go scheduleTimeoutTask(duration, *bot, *cctx, onTimeoutHandler)
+				delete(component.TimeoutTasks, ctx.Data.CustomId)
+				go scheduleTimeoutTask(duration, *bot, *ctx, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
@@ -225,7 +224,7 @@ func eventHandler(event string, data map[string]interface{}) {
 				delete(component.CallbackTasks, cctx.Data.CustomId)
 			}
 		default:
-			log.Println("Unknown interaction type: ", ctx.Type)
+			log.Println("Unknown interaction type: ", i.Type)
 		}
 	default:
 	}
