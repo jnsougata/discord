@@ -32,18 +32,20 @@ func (m *Response) ToBody() map[string]interface{} {
 	if m.Content != "" {
 		body["content"] = m.Content
 	}
-	var finalEmbeds []embed.Embed
 	if utils.CheckTrueEmbed(m.Embed) {
-		finalEmbeds = append(finalEmbeds, m.Embed)
+		m.Embeds = append([]embed.Embed{m.Embed}, m.Embeds...)
 	}
-	if len(m.Embeds) > 0 && len(m.Embeds) < 25 {
-		for _, em := range m.Embeds {
-			if utils.CheckTrueEmbed(em) {
-				finalEmbeds = append(finalEmbeds, em)
+	if len(m.Embeds) > 0 && len(m.Embeds) < 10 {
+		for i, em := range m.Embeds {
+			if !utils.CheckTrueEmbed(em) {
+				m.Embeds = append(m.Embeds[:i], m.Embeds[i+1:]...)
+			}
+			if i > 10 {
+				m.Embeds = append(m.Embeds[:i], m.Embeds[i+1:]...)
 			}
 		}
 	}
-	body["embeds"] = finalEmbeds
+	body["embeds"] = m.Embeds
 	if len(m.AllowedMentions) > 0 && len(m.AllowedMentions) <= 100 {
 		body["allowed_mentions"] = m.AllowedMentions
 	}
