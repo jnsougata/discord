@@ -12,10 +12,7 @@ type File struct {
 	Description string
 }
 
-func Content(path string) []byte {
-	// Opens the file from the given path
-	// Returns the content of the file
-	// if the file does not exist, returns empty byte array
+func Read(path string) []byte {
 	bs, err := os.ReadFile(path)
 	if err != nil {
 		log.Println(fmt.Sprintf(`Error reading file for path %v`, path))

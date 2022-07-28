@@ -62,24 +62,20 @@ func (m *Response) ToBody() map[string]interface{} {
 	if len(m.View.ActionRows) > 0 {
 		body["components"] = m.View.ToComponent()
 	}
-	var finalFiles []file.File
 	if utils.CheckTrueFile(m.File) {
-		finalFiles = append(finalFiles, m.File)
+		m.Files = append([]file.File{m.File}, m.Files...)
 	}
-	for _, f := range m.Files {
+	body["attachments"] = []map[string]interface{}{}
+	for i, f := range m.Files {
 		if utils.CheckTrueFile(f) {
-			finalFiles = append(finalFiles, f)
-		}
-	}
-	if len(finalFiles) > 0 {
-		body["attachments"] = []map[string]interface{}{}
-		for i, f := range finalFiles {
 			a := map[string]interface{}{
 				"id":          i,
 				"filename":    f.Name,
 				"description": f.Description,
 			}
 			body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
+		} else {
+			m.Files = append(m.Files[:i], m.Files[i+1:]...)
 		}
 	}
 	return body
@@ -176,7 +172,7 @@ func (c *Context) SendFollowup(resp Response) {
 	go r.Request()
 }
 
-func (c *Context) DeleteOriginalMessage() {
+func (c *Context) DeleteOriginalResponse() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
 	r := router.Minimal("DELETE", path, nil, "")
 	go r.Request()
