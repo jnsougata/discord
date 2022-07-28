@@ -3,13 +3,13 @@ package emoji
 import "encoding/json"
 
 type Partial struct {
-	Name     string `json:"name,omitempty"`
-	Id       string `json:"id,omitempty"`
+	Id       string `json:"id"`
+	Name     string `json:"name"`
 	Animated bool   `json:"animated,omitempty"`
 }
 
 type Emoji struct {
-	ID            string   `json:"id"`
+	Id            int64    `json:"id,string"`
 	Name          string   `json:"name"`
 	Roles         []string `json:"roles"`
 	Managed       bool     `json:"managed"`

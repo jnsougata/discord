@@ -39,7 +39,10 @@ func (m *Message) ToBody() map[string]interface{} {
 	if len(m.Embeds) > 10 {
 		m.Embeds = m.Embeds[:10]
 	}
-	body["embeds"] = m.Embeds
+	body["embeds"] = []map[string]interface{}{}
+	for _, em := range m.Embeds {
+		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.ToBody())
+	}
 	if len(m.AllowedMentions) > 0 && len(m.AllowedMentions) <= 100 {
 		body["allowed_mentions"] = m.AllowedMentions
 	}
