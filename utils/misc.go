@@ -17,7 +17,7 @@ func AssignId(id string) string {
 
 func ScheduleDeletion(timeout float64, loc map[string]interface{}, ids map[string]bool) {
 	time.Sleep(time.Duration(timeout) * time.Second)
-	for id, _ := range ids {
+	for id := range ids {
 		delete(loc, id)
 	}
 }

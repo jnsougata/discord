@@ -21,7 +21,7 @@ type Partial struct {
 	Description string `json:"description"`
 }
 
-func FromData(payload interface{}) *Attachment {
+func Unmarshal(payload interface{}) *Attachment {
 	attachment := &Attachment{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, attachment)
