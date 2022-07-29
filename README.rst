@@ -12,6 +12,7 @@ Quick Example
         "fmt"
         "github.com/jnsougata/disgo/client"
         "github.com/jnsougata/disgo/command"
+        "github.com/jnsougata/disgo/discord"
         "github.com/jnsougata/disgo/intents"
         "github.com/jnsougata/disgo/interaction"
         "github.com/jnsougata/disgo/presence"
@@ -20,7 +21,7 @@ Quick Example
     )
 
     func main() {
-        d := Disgo{Intent: intents.All(), Chunk: true, Presence: p}.New()
+        d := discord.Client{Intent: intents.All(), Chunk: true, Presence: p}.New()
         d.AddCommands(ping)
         d.OnReady(onReady)
         d.Run(os.Getenv("DISCORD_TOKEN"))
@@ -41,7 +42,7 @@ Quick Example
         Activity: presence.Activity{
             Name: "LO:FI",
             Type: 3,
-            URL:  "https://www.youtube.com/watch?v=e97w-GHsRMY",
+            URL:  "https://www.youtube.com/....",
         },
     }
 
@@ -52,4 +53,3 @@ Quick Example
             ctx.SendResponse(command.Message{Content: fmt.Sprintf("Pong! %vms", b.Latency)})
         },
     }
-
