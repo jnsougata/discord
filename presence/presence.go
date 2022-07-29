@@ -8,7 +8,7 @@ type Presence struct {
 	ClientStatus string   `json:"client_status"` // "mobile" or "web" or "desktop"
 }
 
-func (p *Presence) ToData() map[string]interface{} {
+func (p *Presence) Marshal() map[string]interface{} {
 	presence := map[string]interface{}{}
 	if p.Since != 0 {
 		presence["since"] = p.Since

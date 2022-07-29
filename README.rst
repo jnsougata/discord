@@ -11,18 +11,18 @@ Quick Example
     import (
         "fmt"
         "github.com/jnsougata/disgo/client"
+        "github.com/jnsougata/disgo/command"
         "github.com/jnsougata/disgo/intents"
+        "github.com/jnsougata/disgo/interaction"
         "github.com/jnsougata/disgo/presence"
         "log"
         "os"
     )
 
     func main() {
-        d := Disgo(intents.All(), true)
-        d.AddCommands(toast)
+        d := Disgo{Intent: intents.All(), Chunk: true, Presence: p}.New()
+        d.AddCommands(ping)
         d.OnReady(onReady)
-        d.SetPresence(pr)
-        d.OnSocketReceive(onSocketReceive)
         d.Run(os.Getenv("DISCORD_TOKEN"))
     }
 
@@ -34,11 +34,7 @@ Quick Example
         log.Println("---------")
     }
 
-    func onSocketReceive(_ map[string]interface{}) {
-        //
-    }
-
-    var pr = presence.Presence{
+    var p = presence.Presence{
         Status:       "idle",
         AFK:          false,
         ClientStatus: "mobile",
@@ -46,6 +42,14 @@ Quick Example
             Name: "LO:FI",
             Type: 3,
             URL:  "https://www.youtube.com/watch?v=e97w-GHsRMY",
+        },
+    }
+
+    var ping = command.ApplicationCommand{
+        Name:        "ping",
+        Description: "shows the latency of the client",
+        Handler: func(b client.User, ctx command.Context, ops ...interaction.Option) {
+            ctx.SendResponse(command.Message{Content: fmt.Sprintf("Pong! %vms", b.Latency)})
         },
     }
 

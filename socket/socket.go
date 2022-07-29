@@ -43,7 +43,6 @@ var beatSent int64
 var interval float64
 var execLocked = true
 var beatReceived int64
-var presenceStruct presence.Presence
 var queue []command.ApplicationCommand
 var eventHooks = map[string]interface{}{}
 var commandHooks = map[string]interface{}{}
@@ -58,8 +57,9 @@ func (sock *Socket) getGateway() string {
 }
 
 type Socket struct {
-	Intent  int
-	Memoize bool
+	Intent   int
+	Memoize  bool
+	Presence presence.Presence
 }
 
 func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {
@@ -90,9 +90,9 @@ func (sock *Socket) identify(conn *websocket.Conn, Token string, intent int) {
 			Browser: "disgo",
 			Device:  "disgo",
 		},
-		Presence: presenceStruct.ToData(),
+		Presence: sock.Presence.Marshal(),
 	}
-	if presenceStruct.ClientStatus == "mobile" {
+	if sock.Presence.ClientStatus == "mobile" {
 		d.Properties.Browser = "Discord iOS"
 	}
 	payload := map[string]interface{}{"op": 2, "d": d}
@@ -107,10 +107,6 @@ func (sock *Socket) RegistrationQueue(commands ...command.ApplicationCommand) {
 	for _, com := range commands {
 		queue = append(queue, com)
 	}
-}
-
-func (sock *Socket) StorePresenceData(pr presence.Presence) {
-	presenceStruct = pr
 }
 
 func registerCommand(com command.ApplicationCommand, token string, applicationId string) {
