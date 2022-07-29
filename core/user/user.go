@@ -9,7 +9,7 @@ type User struct {
 	Username      string `json:"username"`
 	Discriminator string `json:"discriminator"`
 	Avatar        string `json:"avatar"`
-	Bot           bool   `json:"bot"`
+	Bot           bool   `json:"client"`
 	System        bool   `json:"system"`
 	MfaEnabled    bool   `json:"mfa_enabled"`
 	Banner        string `json:"banner"`

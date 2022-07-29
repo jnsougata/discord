@@ -1,4 +1,4 @@
-package client
+package socket
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ type client struct {
 		Flags float64 `json:"flags"`
 	} `json:"application"`
 	User struct {
-		Bot           bool    `json:"bot"`
+		Bot           bool    `json:"client"`
 		Avatar        string  `json:"avatar"`
 		Discriminator string  `json:"discriminator"`
 		Flags         float64 `json:"flags"`
