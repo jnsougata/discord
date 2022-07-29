@@ -1,6 +1,9 @@
 package member
 
-import "github.com/jnsougata/disgo/core/user"
+import (
+	"encoding/json"
+	"github.com/jnsougata/disgo/user"
+)
 
 type Member struct {
 	User          user.User `json:"user"`
@@ -13,4 +16,12 @@ type Member struct {
 	Pending       bool      `json:"pending"`
 	Permissions   int       `json:"permissions"`
 	TimeoutExpiry string    `json:"communication_disabled_until"`
+	GuildId       string    `json:"guild_id"`
+}
+
+func Unmarshal(payload interface{}) *Member {
+	m := &Member{}
+	data, _ := json.Marshal(payload)
+	_ = json.Unmarshal(data, m)
+	return m
 }

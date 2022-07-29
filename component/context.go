@@ -3,12 +3,12 @@ package component
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jnsougata/disgo/core/embed"
-	"github.com/jnsougata/disgo/core/file"
-	"github.com/jnsougata/disgo/core/member"
-	"github.com/jnsougata/disgo/core/router"
-	"github.com/jnsougata/disgo/core/user"
-	"github.com/jnsougata/disgo/core/utils"
+	"github.com/jnsougata/disgo/embed"
+	"github.com/jnsougata/disgo/file"
+	"github.com/jnsougata/disgo/member"
+	"github.com/jnsougata/disgo/router"
+	"github.com/jnsougata/disgo/user"
+	"github.com/jnsougata/disgo/utils"
 )
 
 type Message struct {

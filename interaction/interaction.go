@@ -2,8 +2,8 @@ package interaction
 
 import (
 	"encoding/json"
-	"github.com/jnsougata/disgo/core/member"
-	"github.com/jnsougata/disgo/core/user"
+	"github.com/jnsougata/disgo/member"
+	"github.com/jnsougata/disgo/user"
 )
 
 type Option struct {

@@ -2,8 +2,8 @@ package message
 
 import (
 	"encoding/json"
-	"github.com/jnsougata/disgo/core/embed"
-	"github.com/jnsougata/disgo/core/user"
+	"github.com/jnsougata/disgo/embed"
+	"github.com/jnsougata/disgo/user"
 )
 
 type Message struct {

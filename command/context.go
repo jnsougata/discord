@@ -2,11 +2,11 @@ package command
 
 import (
 	"fmt"
-	"github.com/jnsougata/disgo/core/component"
-	"github.com/jnsougata/disgo/core/embed"
-	"github.com/jnsougata/disgo/core/file"
-	"github.com/jnsougata/disgo/core/router"
-	"github.com/jnsougata/disgo/core/utils"
+	component2 "github.com/jnsougata/disgo/component"
+	"github.com/jnsougata/disgo/embed"
+	"github.com/jnsougata/disgo/file"
+	"github.com/jnsougata/disgo/router"
+	"github.com/jnsougata/disgo/utils"
 )
 
 type Message struct {
@@ -17,7 +17,7 @@ type Message struct {
 	TTS             bool
 	Ephemeral       bool
 	SuppressEmbeds  bool
-	View            component.View
+	View            component2.View
 	File            file.File // gets the priority over files
 	Files           []file.File
 }
@@ -113,7 +113,7 @@ func (c *Context) Defer(ephemeral bool) {
 	go r.Request()
 }
 
-func (c *Context) SendModal(modal component.Modal) {
+func (c *Context) SendModal(modal component2.Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()

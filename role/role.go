@@ -1,5 +1,7 @@
 package role
 
+import "encoding/json"
+
 type Role struct {
 	Id           string `json:"id"`
 	Name         string `json:"name"`
@@ -12,4 +14,12 @@ type Role struct {
 	Managed      bool   `json:"managed"`
 	Mentionable  bool   `json:"mentionable"`
 	Tags         string `json:"tags"`
+	GuildId      string `json:"guild_id"`
+}
+
+func Unmarshal(payload interface{}) *Role {
+	role := &Role{}
+	data, _ := json.Marshal(payload)
+	_ = json.Unmarshal(data, role)
+	return role
 }

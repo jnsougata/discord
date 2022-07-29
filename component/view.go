@@ -1,9 +1,9 @@
 package component
 
 import (
-	"github.com/jnsougata/disgo/core/emoji"
-	"github.com/jnsougata/disgo/core/user"
-	"github.com/jnsougata/disgo/core/utils"
+	"github.com/jnsougata/disgo/client"
+	"github.com/jnsougata/disgo/emoji"
+	"github.com/jnsougata/disgo/utils"
 	"log"
 )
 
@@ -17,7 +17,7 @@ type Button struct {
 	URL      string // only for style 5 (link)
 	Disabled bool
 	CustomId string // filled internally
-	OnClick  func(bot user.Bot, cc Context)
+	OnClick  func(bot client.User, cc Context)
 }
 
 func (b *Button) ToComponent() map[string]interface{} {
@@ -88,7 +88,7 @@ type SelectMenu struct {
 	MinValues   int            // default: 0
 	MaxValues   int            // default: 1
 	Disabled    bool
-	OnSelection func(bot user.Bot, cc Context, values ...string)
+	OnSelection func(bot client.User, cc Context, values ...string)
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
@@ -135,7 +135,7 @@ type ActionRow struct {
 type View struct {
 	Timeout    float64     // default: 15 * 60 seconds
 	ActionRows []ActionRow // max 5 rows
-	OnTimeout  func(bot user.Bot, interaction Context)
+	OnTimeout  func(bot client.User, interaction Context)
 }
 
 func (v *View) AddRow(row ActionRow) {

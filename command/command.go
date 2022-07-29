@@ -2,8 +2,8 @@ package command
 
 import (
 	"fmt"
-	"github.com/jnsougata/disgo/core/interaction"
-	"github.com/jnsougata/disgo/core/user"
+	"github.com/jnsougata/disgo/client"
+	"github.com/jnsougata/disgo/interaction"
 )
 
 type ApplicationCommand struct {
@@ -14,12 +14,12 @@ type ApplicationCommand struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
-	Handler           func(bot user.Bot, ctx Context, options ...interaction.Option)
+	Handler           func(bot client.User, ctx Context, options ...interaction.Option)
 }
 
-func (cmd *ApplicationCommand) ToData() (
+func (cmd *ApplicationCommand) Marshal() (
 	map[string]interface{},
-	func(bot user.Bot, ctx Context, options ...interaction.Option),
+	func(bot client.User, ctx Context, options ...interaction.Option),
 	int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {

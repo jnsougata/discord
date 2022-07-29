@@ -1,8 +1,8 @@
 package component
 
 import (
-	"github.com/jnsougata/disgo/core/user"
-	"github.com/jnsougata/disgo/core/utils"
+	"github.com/jnsougata/disgo/client"
+	"github.com/jnsougata/disgo/utils"
 )
 
 type TextInput struct {
@@ -59,7 +59,7 @@ type Modal struct {
 	SelectMenus []SelectMenu
 }
 
-func (m *Modal) OnSubmit(handler func(bot user.Bot, interaction Context)) {
+func (m *Modal) OnSubmit(handler func(bot client.User, interaction Context)) {
 	m.CustomId = utils.AssignId(m.CustomId)
 	CallbackTasks[m.CustomId] = handler
 }

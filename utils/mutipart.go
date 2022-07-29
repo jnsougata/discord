@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/jnsougata/disgo/core/file"
+	"github.com/jnsougata/disgo/file"
 	"log"
 	"mime/multipart"
 	"net/textproto"

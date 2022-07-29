@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"github.com/jnsougata/disgo/core/embed"
-	"github.com/jnsougata/disgo/core/file"
+	"github.com/jnsougata/disgo/embed"
+	"github.com/jnsougata/disgo/file"
 )
 
 func CheckTrueEmbed(em embed.Embed) bool {
