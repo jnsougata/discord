@@ -12,13 +12,13 @@ import (
 
 type bot struct {
 	intent int
-	core   *client.Client
+	core   *client.Socket
 }
 
 func New(intent int, memoize bool) *bot {
 	return &bot{
 		intent: intent,
-		core: &client.Client{
+		core: &client.Socket{
 			Intent:  intent,
 			Memoize: memoize,
 		},

@@ -9,6 +9,7 @@ import (
 	"github.com/jnsougata/disgo/core/consts"
 	"github.com/jnsougata/disgo/core/guild"
 	"github.com/jnsougata/disgo/core/interaction"
+	"github.com/jnsougata/disgo/core/member"
 	"github.com/jnsougata/disgo/core/message"
 	"github.com/jnsougata/disgo/core/presence"
 	"github.com/jnsougata/disgo/core/router"
@@ -21,6 +22,7 @@ import (
 
 type client struct {
 	SessionId   string `json:"session_id"`
+	Sequence    int
 	Application struct {
 		Id    string  `json:"id"`
 		Flags float64 `json:"flags"`
@@ -46,8 +48,9 @@ var presenceStruct presence.Presence
 var queue []command.ApplicationCommand
 var eventHooks = map[string]interface{}{}
 var commandHooks = map[string]interface{}{}
+var guilds = map[string]guild.Guild{}
 
-func (c *Client) getGateway() string {
+func (sock *Socket) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
 	var payload map[string]string
 	bytes, _ := io.ReadAll(data.Body)
@@ -55,12 +58,12 @@ func (c *Client) getGateway() string {
 	return fmt.Sprintf("%s?v=10&encoding=json", payload["url"])
 }
 
-type Client struct {
+type Socket struct {
 	Intent  int
 	Memoize bool
 }
 
-func (c *Client) keepAlive(conn *websocket.Conn, dur int) {
+func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {
 	for {
 		_ = conn.WriteJSON(map[string]interface{}{"op": 1, "d": 251})
 		beatSent = time.Now().UnixMilli()
@@ -68,7 +71,7 @@ func (c *Client) keepAlive(conn *websocket.Conn, dur int) {
 	}
 }
 
-func (c *Client) identify(conn *websocket.Conn, Token string, intent int) {
+func (sock *Socket) identify(conn *websocket.Conn, Token string, intent int) {
 	type properties struct {
 		Os      string `json:"os"`
 		Browser string `json:"browser"`
@@ -97,17 +100,17 @@ func (c *Client) identify(conn *websocket.Conn, Token string, intent int) {
 	_ = conn.WriteJSON(payload)
 }
 
-func (c *Client) AddHandler(name string, fn interface{}) {
+func (sock *Socket) AddHandler(name string, fn interface{}) {
 	eventHooks[name] = fn
 }
 
-func (c *Client) Queue(commands ...command.ApplicationCommand) {
+func (sock *Socket) Queue(commands ...command.ApplicationCommand) {
 	for _, com := range commands {
 		queue = append(queue, com)
 	}
 }
 
-func (c *Client) StorePresenceData(pr presence.Presence) {
+func (sock *Socket) StorePresenceData(pr presence.Presence) {
 	presenceStruct = pr
 }
 
@@ -132,22 +135,23 @@ func registerCommand(com command.ApplicationCommand, token string, applicationId
 	}
 }
 
-func (c *Client) Run(token string) {
-	wss := c.getGateway()
+func (sock *Socket) Run(token string) {
+	wss := sock.getGateway()
 	conn, _, err := websocket.DefaultDialer.Dial(wss, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for {
 		var wsmsg struct {
-			Op       int
-			Data     map[string]interface{} `json:"d"`
+			Op       int                    `json:"op"`
 			Event    string                 `json:"t"`
 			Sequence int                    `json:"s"`
+			Data     map[string]interface{} `json:"d"`
 		}
 		_ = conn.ReadJSON(&wsmsg)
+		var c client
+		c.Sequence = wsmsg.Sequence
 		if wsmsg.Event == consts.OnReady {
-			var c client
 			b, _ := json.Marshal(wsmsg.Data)
 			_ = json.Unmarshal(b, &c)
 			for _, cmd := range queue {
@@ -162,8 +166,8 @@ func (c *Client) Run(token string) {
 		}
 		if wsmsg.Op == 10 {
 			interval = wsmsg.Data["heartbeat_interval"].(float64)
-			c.identify(conn, token, c.Intent)
-			go c.keepAlive(conn, int(interval))
+			sock.identify(conn, token, sock.Intent)
+			go sock.keepAlive(conn, int(interval))
 		}
 		if wsmsg.Op == 11 {
 			beatReceived = time.Now().UnixMilli()
@@ -172,10 +176,38 @@ func (c *Client) Run(token string) {
 				bot.Latency = latency
 			}
 		}
+		if wsmsg.Op == 7 {
+			_ = conn.WriteJSON(map[string]interface{}{
+				"op": 6,
+				"d": map[string]interface{}{
+					"token":      token,
+					"session_id": c.SessionId,
+					"sequence":   c.Sequence,
+				},
+			})
+		}
+		if wsmsg.Op == 9 {
+			sock.identify(conn, token, sock.Intent)
+		}
 		eventHandler(wsmsg.Event, wsmsg.Data)
 		if h, ok := eventHooks[consts.OnSocketReceive]; ok {
 			handler := h.(func(d map[string]interface{}))
 			go handler(wsmsg.Data)
+		}
+		if wsmsg.Event == "GUILD_CREATE" {
+			g := guild.FromData(wsmsg.Data)
+			guilds[g.Id] = *g
+			if sock.Memoize {
+				requestMembers(conn, g.Id)
+			}
+		}
+		if wsmsg.Event == "GUILD_MEMBERS_CHUNK" {
+			var ms []member.Member
+			ma, _ := json.Marshal(wsmsg.Data["members"])
+			_ = json.Unmarshal(ma, &ms)
+			id := wsmsg.Data["guild_id"].(string)
+			g := guilds[id]
+			g.Members = ms
 		}
 	}
 }
@@ -263,4 +295,15 @@ func scheduleTimeoutTask(timeout float64, user user.Bot, cc component.Context,
 	handler func(bot user.Bot, cc component.Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
 	handler(user, cc)
+}
+
+func requestMembers(conn *websocket.Conn, guildId string) {
+	_ = conn.WriteJSON(map[string]interface{}{
+		"op": 8,
+		"d": map[string]interface{}{
+			"guild_id": guildId,
+			"query":    "",
+			"limit":    0,
+		},
+	})
 }

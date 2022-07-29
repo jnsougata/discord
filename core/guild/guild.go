@@ -1,6 +1,11 @@
 package guild
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/jnsougata/disgo/core/emoji"
+	"github.com/jnsougata/disgo/core/member"
+	"github.com/jnsougata/disgo/core/role"
+)
 
 type Guild struct {
 	Id                          string                   `json:"id"`
@@ -20,8 +25,8 @@ type Guild struct {
 	VerificationLevel           int                      `json:"verification_level"`
 	DefaultMessageNotifications int                      `json:"default_message_notifications"`
 	ExplicitContentFilter       int                      `json:"explicit_content_filter"`
-	Roles                       []map[string]interface{} `json:"roles"`
-	Emojis                      []map[string]interface{} `json:"emojis"`
+	Roles                       []role.Role              `json:"roles"`
+	Emojis                      []emoji.Emoji            `json:"emojis"`
 	Features                    []string                 `json:"features"`
 	MFALevel                    int                      `json:"mfa_level"`
 	ApplicationID               string                   `json:"application_id"`
@@ -44,6 +49,17 @@ type Guild struct {
 	NSFWLevel                   int                      `json:"nsfw_level"`
 	Stickers                    map[string]interface{}   `json:"stickers"`
 	PremiumProgressBarEnabled   bool                     `json:"premium_progress_bar_enabled"`
+	Members                     []member.Member          `json:"members"`
+	Channels                    []map[string]interface{} `json:"channels"`
+	JoinedAT                    string                   `json:"joined_at"`
+	Large                       bool                     `json:"large"`
+	MemberCount                 int                      `json:"member_count"`
+	VoiceStates                 []map[string]interface{} `json:"voice_states"`
+	Presences                   []map[string]interface{} `json:"presences"`
+	Threads                     []map[string]interface{} `json:"threads"`
+	StageInstances              []map[string]interface{} `json:"stage_instances"`
+	Unavailable                 bool                     `json:"unavailable"`
+	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
 }
 
 func FromData(payload interface{}) *Guild {
