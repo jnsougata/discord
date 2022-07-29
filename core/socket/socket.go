@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-type client struct {
+type runtime struct {
 	SessionId   string `json:"session_id"`
 	Sequence    int
 	Application struct {
@@ -28,7 +28,7 @@ type client struct {
 		Flags float64 `json:"flags"`
 	} `json:"application"`
 	User struct {
-		Bot           bool    `json:"client"`
+		Bot           bool    `json:"bot"`
 		Avatar        string  `json:"avatar"`
 		Discriminator string  `json:"discriminator"`
 		Flags         float64 `json:"flags"`
@@ -42,8 +42,8 @@ var bot *user.Bot
 var latency int64
 var beatSent int64
 var interval float64
-var beatReceived int64
 var execLocked = true
+var beatReceived int64
 var presenceStruct presence.Presence
 var queue []command.ApplicationCommand
 var eventHooks = map[string]interface{}{}
@@ -149,13 +149,13 @@ func (sock *Socket) Run(token string) {
 			Data     map[string]interface{} `json:"d"`
 		}
 		_ = conn.ReadJSON(&wsmsg)
-		var c client
-		c.Sequence = wsmsg.Sequence
+		var r runtime
+		r.Sequence = wsmsg.Sequence
 		if wsmsg.Event == consts.OnReady {
 			b, _ := json.Marshal(wsmsg.Data)
-			_ = json.Unmarshal(b, &c)
+			_ = json.Unmarshal(b, &r)
 			for _, cmd := range queue {
-				go registerCommand(cmd, token, c.Application.Id)
+				go registerCommand(cmd, token, r.Application.Id)
 			}
 			bot = user.MakeBot(wsmsg.Data["user"].(map[string]interface{}))
 			bot.Latency = latency
@@ -181,8 +181,8 @@ func (sock *Socket) Run(token string) {
 				"op": 6,
 				"d": map[string]interface{}{
 					"token":      token,
-					"session_id": c.SessionId,
-					"sequence":   c.Sequence,
+					"session_id": r.SessionId,
+					"sequence":   r.Sequence,
 				},
 			})
 		}
@@ -202,12 +202,14 @@ func (sock *Socket) Run(token string) {
 			}
 		}
 		if wsmsg.Event == "GUILD_MEMBERS_CHUNK" {
+			execLocked = true
 			var ms []member.Member
 			ma, _ := json.Marshal(wsmsg.Data["members"])
 			_ = json.Unmarshal(ma, &ms)
 			id := wsmsg.Data["guild_id"].(string)
 			g := guilds[id]
 			g.Members = ms
+			execLocked = false
 		}
 	}
 }
