@@ -10,6 +10,7 @@ import (
 	"github.com/jnsougata/disgo/core/guild"
 	"github.com/jnsougata/disgo/core/interaction"
 	"github.com/jnsougata/disgo/core/message"
+	"github.com/jnsougata/disgo/core/presence"
 	"github.com/jnsougata/disgo/core/router"
 	"github.com/jnsougata/disgo/core/user"
 	"io"
@@ -40,6 +41,7 @@ var execLocked = true
 var queue []command.ApplicationCommand
 var eventHooks = map[string]interface{}{}
 var commandHooks = map[string]interface{}{}
+var presenceStruct presence.Presence
 
 func (c *Client) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -62,22 +64,32 @@ func (c *Client) keepAlive(conn *websocket.Conn, dur int) {
 }
 
 func (c *Client) identify(conn *websocket.Conn, Token string, intent int) {
-	payload := map[string]interface{}{
-		"op": 2,
-		"d": map[string]interface{}{
-			"token":   Token,
-			"intents": intent,
-			"properties": map[string]interface{}{
-				"os":      "linux",
-				"browser": "discord.go",
-				"device":  "discord.go",
-			},
+	type properties struct {
+		Os      string `json:"os"`
+		Browser string `json:"browser"`
+		Device  string `json:"device"`
+	}
+	type data struct {
+		Token      string                 `json:"token"`
+		Intents    int                    `json:"intents"`
+		Properties properties             `json:"properties"`
+		Presence   map[string]interface{} `json:"presence"`
+	}
+	d := data{
+		Token:   Token,
+		Intents: intent,
+		Properties: properties{
+			Os:      "linux",
+			Browser: "disgo",
+			Device:  "disgo",
 		},
+		Presence: presenceStruct.ToData(),
 	}
-	err := conn.WriteJSON(payload)
-	if err != nil {
-		log.Fatal(err)
+	if presenceStruct.ClientStatus == "mobile" {
+		d.Properties.Browser = "Discord iOS"
 	}
+	payload := map[string]interface{}{"op": 2, "d": d}
+	_ = conn.WriteJSON(payload)
 }
 
 func (c *Client) AddHandler(name string, fn interface{}) {
@@ -88,6 +100,10 @@ func (c *Client) Queue(commands ...command.ApplicationCommand) {
 	for _, com := range commands {
 		queue = append(queue, com)
 	}
+}
+
+func (c *Client) StorePresenceData(pr presence.Presence) {
+	presenceStruct = pr
 }
 
 func registerCommand(com command.ApplicationCommand, token string, applicationId string) {

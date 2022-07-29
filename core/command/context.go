@@ -11,14 +11,14 @@ import (
 
 type Message struct {
 	Content         string
-	Embed           embed.Embed
+	Embed           embed.Embed // gets the priority over embeds
 	Embeds          []embed.Embed
 	AllowedMentions []string
 	TTS             bool
 	Ephemeral       bool
 	SuppressEmbeds  bool
 	View            component.View
-	File            file.File
+	File            file.File // gets the priority over files
 	Files           []file.File
 }
 

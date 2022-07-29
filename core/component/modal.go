@@ -5,20 +5,15 @@ import (
 	"github.com/jnsougata/disgo/core/utils"
 )
 
-const (
-	LongInput  = 2
-	ShortInput = 1
-)
-
 type TextInput struct {
-	CustomId    string `json:"custom_id"`
-	Label       string `json:"label"`
-	Style       int    `json:"style"`
-	Value       string `json:"value"`
-	Placeholder string `json:"placeholder"`
-	MinLength   int    `json:"min_length"`
-	MaxLength   int    `json:"max_length"`
-	Required    bool   `json:"required"`
+	CustomId    string `json:"custom_id"`   // filled internally
+	Label       string `json:"label"`       // required default: "Text Input"
+	Style       int    `json:"style"`       // 1 for short, 2 for long default: 1
+	Value       string `json:"value"`       // default: ""
+	Placeholder string `json:"placeholder"` // max 100 chars
+	MinLength   int    `json:"min_length"`  // default: 0 upto 4000
+	MaxLength   int    `json:"max_length"`  // default: 0 upto 4000
+	Required    bool   `json:"required"`    // default: false
 }
 
 func (inp *TextInput) ToComponent() map[string]interface{} {
@@ -29,11 +24,13 @@ func (inp *TextInput) ToComponent() map[string]interface{} {
 	}
 	if inp.Label != "" {
 		field["label"] = inp.Label
+	} else {
+		field["label"] = "Text Input"
 	}
 	if inp.Style != 0 {
 		field["style"] = inp.Style
 	} else {
-		field["style"] = ShortInput
+		field["style"] = 1
 	}
 	if inp.Value != "" {
 		field["value"] = inp.Value
@@ -44,6 +41,10 @@ func (inp *TextInput) ToComponent() map[string]interface{} {
 	field["min_length"] = inp.MinLength
 	if inp.MaxLength > 0 && inp.MaxLength <= 4000 {
 		field["max_length"] = inp.MaxLength
+	} else if inp.MaxLength > 4000 {
+		field["max_length"] = 4000
+	} else {
+		field["max_length"] = 1
 	}
 	if inp.Required {
 		field["required"] = true
@@ -53,7 +54,7 @@ func (inp *TextInput) ToComponent() map[string]interface{} {
 
 type Modal struct {
 	Title       string
-	CustomId    string
+	CustomId    string // filled internally
 	Fields      []TextInput
 	SelectMenus []SelectMenu
 }

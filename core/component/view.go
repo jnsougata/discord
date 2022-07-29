@@ -7,24 +7,16 @@ import (
 	"log"
 )
 
-const (
-	BlueButton  = 1
-	GreyButton  = 2
-	GreenButton = 3
-	RedButton   = 4
-	LinkButton  = 5
-)
-
 var CallbackTasks = map[string]interface{}{}
 var TimeoutTasks = map[string][]interface{}{}
 
 type Button struct {
-	Style    int
-	Label    string
+	Style    int    // default: 1 (blue) More: 2 (grey), 3 (green), 4 (red), 5 (link)
+	Label    string // default: "Button"
 	Emoji    emoji.Partial
-	URL      string
+	URL      string // only for style 5 (link)
 	Disabled bool
-	CustomId string
+	CustomId string // filled internally
 	OnClick  func(bot user.User, cc Context)
 }
 
@@ -40,7 +32,7 @@ func (b *Button) ToComponent() map[string]interface{} {
 	if b.Style != 0 {
 		btn["style"] = b.Style
 	} else {
-		btn["style"] = BlueButton
+		btn["style"] = 1
 	}
 	if b.Label != "" {
 		btn["label"] = b.Label
@@ -50,7 +42,7 @@ func (b *Button) ToComponent() map[string]interface{} {
 	if b.Emoji.Id != "" {
 		btn["emoji"] = b.Emoji
 	}
-	if b.URL != "" && b.Style == LinkButton {
+	if b.URL != "" && b.Style == 5 {
 		btn["url"] = b.URL
 	}
 	if b.Disabled {
@@ -60,11 +52,11 @@ func (b *Button) ToComponent() map[string]interface{} {
 }
 
 type SelectOption struct {
-	Label       string
-	Value       string
-	Description string
+	Label       string // max 100 characters
+	Value       string // default: ""
+	Description string // max 100 characters
 	Emoji       emoji.Partial
-	Default     bool
+	Default     bool // default: false
 }
 
 func (so *SelectOption) ToComponent() map[string]interface{} {
@@ -90,12 +82,11 @@ func (so *SelectOption) ToComponent() map[string]interface{} {
 }
 
 type SelectMenu struct {
-	Type        int
-	CustomId    string
-	Options     []SelectOption
-	Placeholder string
-	MinValues   int
-	MaxValues   int
+	CustomId    string         // filled internally
+	Options     []SelectOption // max 25 options
+	Placeholder string         // max 100 characters
+	MinValues   int            // default: 0
+	MaxValues   int            // default: 1
 	Disabled    bool
 	OnSelection func(bot user.User, cc Context, values ...string)
 }
@@ -137,13 +128,13 @@ func (s *SelectMenu) ToComponent() map[string]interface{} {
 }
 
 type ActionRow struct {
-	Buttons    []Button
+	Buttons    []Button // max 5 buttons
 	SelectMenu SelectMenu
 }
 
 type View struct {
-	Timeout    float64
-	ActionRows []ActionRow
+	Timeout    float64     // default: 15 * 60 seconds
+	ActionRows []ActionRow // max 5 rows
 	OnTimeout  func(bot user.User, interaction Context)
 }
 

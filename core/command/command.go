@@ -6,47 +6,15 @@ import (
 	"github.com/jnsougata/disgo/core/user"
 )
 
-const (
-	SlashCommandType    = 1
-	UserCommandType     = 2
-	MessageCommandType  = 3
-	SubCommandType      = 1
-	SubCommandGroupType = 2
-	StringType          = 3
-	IntegerType         = 4
-	BooleanType         = 5
-	UserType            = 6
-	ChannelType         = 7
-	RoleType            = 8
-	MentionableType     = 9
-	NumberType          = 10
-	AttachmentType      = 11
-)
-
-const (
-	GuildTextChannel   = 0
-	DMChannel          = 1
-	GuildVoiceChannel  = 2
-	GroupDMChannel     = 3
-	GuildCategory      = 4
-	GuildNews          = 5
-	GuildNewsThread    = 10
-	GuildPublicThread  = 11
-	GuildPrivateThread = 12
-	GuildStageVoice    = 13
-	GuildDirectory     = 14
-	GuildForum         = 15
-)
-
 type ApplicationCommand struct {
-	Type                     int
-	Name                     string
-	Description              string
-	Options                  []Option
-	DMPermission             bool
-	DefaultMemberPermissions int
-	GuildId                  int64
-	Handler                  func(bot user.User, ctx Context, options ...interaction.Option)
+	Type              int    // 0: slash command, 1: user command, 2: message command
+	Name              string // must be less than 32 characters
+	Description       string // must be less than 100 characters
+	Options           []Option
+	DMPermission      bool // default: false
+	MemberPermissions int  // default: send_messages
+	GuildId           int64
+	Handler           func(bot user.User, ctx Context, options ...interaction.Option)
 }
 
 func (cmd *ApplicationCommand) ToData() (
@@ -76,8 +44,8 @@ func (cmd *ApplicationCommand) ToData() (
 	body["name"] = cmd.Name
 	body["description"] = cmd.Description
 	body["dm_permission"] = cmd.DMPermission
-	if cmd.DefaultMemberPermissions != 0 {
-		body["default_member_permissions"] = cmd.DefaultMemberPermissions
+	if cmd.MemberPermissions != 0 {
+		body["default_member_permissions"] = cmd.MemberPermissions
 	} else {
 		body["default_member_permissions"] = 1 << 11
 	}
@@ -90,19 +58,19 @@ func (cmd *ApplicationCommand) ToData() (
 type Option struct {
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
-	Type         int      `json:"type"`
+	Type         int      `json:"type"` // 3: string, 4: integer, 5: boolean, 6: user, 7: channel, 8: role, 9: mentionable, 10: number, 11: attachment
 	Required     bool     `json:"required,omitempty"`
-	MinLength    int      `json:"min_length,omitempty"`
-	MaxLength    int      `json:"max_length,omitempty"`
-	MinValue     int64    `json:"min_value,omitempty"`
-	MaxValue     int64    `json:"max_value,omitempty"`
-	AutoComplete bool     `json:"auto_complete,omitempty"`
-	ChannelTypes []int    `json:"channel_types,omitempty"`
-	Options      []Option `json:"options,omitempty"`
-	Choices      []Choice `json:"choices,omitempty"`
+	MinLength    int      `json:"min_length,omitempty"`    // for type 3 only
+	MaxLength    int      `json:"max_length,omitempty"`    // for type 3 only
+	MinValue     int64    `json:"min_value,omitempty"`     // for type 4 and 10 only
+	MaxValue     int64    `json:"max_value,omitempty"`     // for type 4 and 10 only
+	AutoComplete bool     `json:"auto_complete,omitempty"` // for type 1 and
+	ChannelTypes []int    `json:"channel_types,omitempty"` // 0: guild text channel, 1: DM channel, 2: guild voice channel, 3: group DM channel, 4: guild category, 5: guild news, 10: guild news thread, 11: guild public thread, 12: guild private thread, 13: guild stage voice, 14: guild directory, 15: guild forum
+	Options      []Option `json:"options,omitempty"`       // for type 1 and 2 only
+	Choices      []Choice `json:"choices,omitempty"`       // for type 3 or 4 or 10 only
 }
 
 type Choice struct {
 	Name  string      `json:"name"`
-	Value interface{} `json:"value"`
+	Value interface{} `json:"value"` // same type as type of option
 }

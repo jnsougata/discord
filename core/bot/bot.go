@@ -6,6 +6,7 @@ import (
 	"github.com/jnsougata/disgo/core/consts"
 	"github.com/jnsougata/disgo/core/guild"
 	"github.com/jnsougata/disgo/core/message"
+	"github.com/jnsougata/disgo/core/presence"
 	"github.com/jnsougata/disgo/core/user"
 )
 
@@ -26,6 +27,10 @@ func New(intent int, memoize bool) *Bot {
 
 func (bot *Bot) Run(token string) {
 	bot.core.Run(token)
+}
+
+func (bot *Bot) SetPresence(presence presence.Presence) {
+	bot.core.StorePresenceData(presence)
 }
 
 func (bot *Bot) AddCommands(commands ...command.ApplicationCommand) {

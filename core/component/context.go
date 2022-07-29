@@ -101,7 +101,7 @@ type Data struct {
 }
 
 type Context struct {
-	ID             string                 `json:"id"`
+	Id             string                 `json:"id"`
 	ApplicationId  string                 `json:"application_id"`
 	Type           int                    `json:"type"`
 	Data           Data                   `json:"data"`
@@ -125,7 +125,7 @@ func FromData(payload interface{}) *Context {
 }
 
 func (c *Context) SendResponse(resp Message) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := router.New(
 		"POST", path, map[string]interface{}{"type": 4, "data": resp.ToBody()}, "", resp.Files)
 	go r.Request()
@@ -133,13 +133,13 @@ func (c *Context) SendResponse(resp Message) {
 
 func (c *Context) Ack() {
 	body := map[string]interface{}{"type": 6}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := router.New("POST", path, body, "", nil)
 	go r.Request()
 }
 
 func (c *Context) SendModal(modal Modal) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := router.New("POST", path, modal.ToBody(), "", nil)
 	go r.Request()
 }
@@ -151,7 +151,7 @@ func (c *Context) SendFollowup(resp Message) {
 }
 
 func (c *Context) EditOriginalMessage(resp Message) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.ID, c.Token)
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body := map[string]interface{}{"type": 7, "data": resp.ToBody()}
 	r := router.New("POST", path, body, "", resp.Files)
 	go r.Request()
