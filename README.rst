@@ -10,30 +10,42 @@ Quick Example
 
     import (
         "fmt"
-        "github.com/jnsougata/disgo/core/bot"
-        "github.com/jnsougata/disgo/core/intents"
-        "github.com/jnsougata/disgo/core/message"
-        "github.com/jnsougata/disgo/core/user"
+        "github.com/jnsougata/disgo/client"
+        "github.com/jnsougata/disgo/intents"
+        "github.com/jnsougata/disgo/presence"
         "log"
         "os"
     )
 
     func main() {
-        b := bot.New(intents.All(), false)
-        b.OnReady(onReady)
-        b.OnMessage(onMessage)
-        b.Run(os.Getenv("DISCORD_TOKEN"))
+        d := Disgo(intents.All(), true)
+        d.AddCommands(toast)
+        d.OnReady(onReady)
+        d.SetPresence(pr)
+        d.OnSocketReceive(onSocketReceive)
+        d.Run(os.Getenv("DISCORD_TOKEN"))
     }
 
-    func onReady(bot user.User) {
+    func onReady(bot client.User) {
         log.Println(fmt.Sprintf(
             "Logged in as %s#%s (Id: %s)",
-            bot.Username, bot.Discriminator, bot.ID,
+            bot.Username, bot.Discriminator, bot.Id,
         ))
         log.Println("---------")
     }
 
-    func onMessage(_ user.User, msg message.Message) {
-        log.Println(fmt.Sprintf(
-            `[%s] %s#%s said: %s`, msg.Author.ID, msg.Author.Username, msg.Author.Discriminator, msg.Content))
+    func onSocketReceive(_ map[string]interface{}) {
+        //
     }
+
+    var pr = presence.Presence{
+        Status:       "idle",
+        AFK:          false,
+        ClientStatus: "mobile",
+        Activity: presence.Activity{
+            Name: "LO:FI",
+            Type: 3,
+            URL:  "https://www.youtube.com/watch?v=e97w-GHsRMY",
+        },
+    }
+
