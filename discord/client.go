@@ -1,4 +1,4 @@
-package main
+package discord
 
 import (
 	"github.com/jnsougata/disgo/client"
@@ -10,13 +10,13 @@ import (
 	"github.com/jnsougata/disgo/socket"
 )
 
-type Disgo struct {
+type Client struct {
 	Intent   int
 	Chunk    bool
 	Presence presence.Presence
 }
 
-func (d Disgo) New() *connection {
+func (d Client) New() *connection {
 	return &connection{
 		Sock: &socket.Socket{
 			Intent:   d.Intent,
