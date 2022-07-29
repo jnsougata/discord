@@ -104,7 +104,7 @@ func (sock *Socket) AddHandler(name string, fn interface{}) {
 	eventHooks[name] = fn
 }
 
-func (sock *Socket) Queue(commands ...command.ApplicationCommand) {
+func (sock *Socket) RegistrationQueue(commands ...command.ApplicationCommand) {
 	for _, com := range commands {
 		queue = append(queue, com)
 	}
