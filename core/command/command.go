@@ -7,7 +7,7 @@ import (
 )
 
 type ApplicationCommand struct {
-	Type              int    // 0: slash command, 1: user command, 2: message command
+	Type              int    // 1: slash command, 2: user command, 3: message command
 	Name              string // must be less than 32 characters
 	Description       string // must be less than 100 characters
 	Options           []Option
@@ -23,14 +23,12 @@ func (cmd *ApplicationCommand) ToData() (
 	int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {
-	case 0:
-		body["type"] = 1
-	case 1:
-		body["type"] = 1
-	case 2:
-		body["type"] = 2
 	case 3:
 		body["type"] = 3
+	case 2:
+		body["type"] = 2
+	default:
+		body["type"] = 1
 	}
 	if cmd.Name == "" || cmd.Description == "" {
 		panic("Both command {name} or {description} must be set")
@@ -44,10 +42,11 @@ func (cmd *ApplicationCommand) ToData() (
 	body["name"] = cmd.Name
 	body["description"] = cmd.Description
 	body["dm_permission"] = cmd.DMPermission
-	if cmd.MemberPermissions != 0 {
-		body["default_member_permissions"] = cmd.MemberPermissions
-	} else {
+	switch cmd.MemberPermissions {
+	case 0:
 		body["default_member_permissions"] = 1 << 11
+	default:
+		body["default_member_permissions"] = cmd.MemberPermissions
 	}
 	if cmd.Type == 1 {
 		body["options"] = cmd.Options
@@ -67,7 +66,7 @@ type Option struct {
 	AutoComplete bool     `json:"auto_complete,omitempty"` // for type 1 and
 	ChannelTypes []int    `json:"channel_types,omitempty"` // 0: guild text channel, 1: DM channel, 2: guild voice channel, 3: group DM channel, 4: guild category, 5: guild news, 10: guild news thread, 11: guild public thread, 12: guild private thread, 13: guild stage voice, 14: guild directory, 15: guild forum
 	Options      []Option `json:"options,omitempty"`       // for type 1 and 2 only
-	Choices      []Choice `json:"choices,omitempty"`       // for type 3 or 4 or 10 only
+	Choices      []Choice `json:"choices,omitempty"`       // for type 3 and 4 and 10 only
 }
 
 type Choice struct {

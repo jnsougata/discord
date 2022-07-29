@@ -14,8 +14,8 @@ type connection struct {
 	socket *socket.Socket
 }
 
-func New(intent int, memoize bool) *connection {
-	return &connection{socket: &socket.Socket{Intent: intent, Memoize: memoize}}
+func New(intent int, chunk bool) *connection {
+	return &connection{socket: &socket.Socket{Intent: intent, Memoize: chunk}}
 }
 
 func (c *connection) Run(token string) {
