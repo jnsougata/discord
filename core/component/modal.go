@@ -59,7 +59,7 @@ type Modal struct {
 	SelectMenus []SelectMenu
 }
 
-func (m *Modal) OnSubmit(handler func(bot user.User, interaction Context)) {
+func (m *Modal) OnSubmit(handler func(bot user.Bot, interaction Context)) {
 	m.CustomId = utils.AssignId(m.CustomId)
 	CallbackTasks[m.CustomId] = handler
 }

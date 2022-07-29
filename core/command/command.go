@@ -14,12 +14,12 @@ type ApplicationCommand struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
-	Handler           func(bot user.User, ctx Context, options ...interaction.Option)
+	Handler           func(bot user.Bot, ctx Context, options ...interaction.Option)
 }
 
 func (cmd *ApplicationCommand) ToData() (
 	map[string]interface{},
-	func(bot user.User, ctx Context, options ...interaction.Option),
+	func(bot user.Bot, ctx Context, options ...interaction.Option),
 	int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {

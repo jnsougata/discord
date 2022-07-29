@@ -10,13 +10,13 @@ import (
 	"github.com/jnsougata/disgo/core/user"
 )
 
-type Bot struct {
+type bot struct {
 	intent int
 	core   *client.Client
 }
 
-func New(intent int, memoize bool) *Bot {
-	return &Bot{
+func New(intent int, memoize bool) *bot {
+	return &bot{
 		intent: intent,
 		core: &client.Client{
 			Intent:  intent,
@@ -25,38 +25,38 @@ func New(intent int, memoize bool) *Bot {
 	}
 }
 
-func (bot *Bot) Run(token string) {
+func (bot *bot) Run(token string) {
 	bot.core.Run(token)
 }
 
-func (bot *Bot) SetPresence(presence presence.Presence) {
+func (bot *bot) SetPresence(presence presence.Presence) {
 	bot.core.StorePresenceData(presence)
 }
 
-func (bot *Bot) AddCommands(commands ...command.ApplicationCommand) {
+func (bot *bot) AddCommands(commands ...command.ApplicationCommand) {
 	bot.core.Queue(commands...)
 }
 
-func (bot *Bot) OnSocketReceive(handler func(payload map[string]interface{})) {
+func (bot *bot) OnSocketReceive(handler func(payload map[string]interface{})) {
 	bot.core.AddHandler(consts.OnSocketReceive, handler)
 }
 
-func (bot *Bot) OnMessage(handler func(bot user.User, message message.Message)) {
+func (bot *bot) OnMessage(handler func(bot user.Bot, message message.Message)) {
 	bot.core.AddHandler(consts.OnMessageCreate, handler)
 }
 
-func (bot *Bot) OnReady(handler func(bot user.User)) {
+func (bot *bot) OnReady(handler func(bot user.Bot)) {
 	bot.core.AddHandler(consts.OnReady, handler)
 }
 
-func (bot *Bot) OnInteraction(handler func(bot user.User, ctx command.Context)) {
+func (bot *bot) OnInteraction(handler func(bot user.Bot, ctx command.Context)) {
 	bot.core.AddHandler(consts.OnInteractionCreate, handler)
 }
 
-func (bot *Bot) OnGuildJoin(handler func(bot user.User, guild guild.Guild)) {
+func (bot *bot) OnGuildJoin(handler func(bot user.Bot, guild guild.Guild)) {
 	bot.core.AddHandler(consts.OnGuildCreate, handler)
 }
 
-func (bot *Bot) OnGuildLeave(handler func(bot user.User, guild guild.Guild)) {
+func (bot *bot) OnGuildLeave(handler func(bot user.Bot, guild guild.Guild)) {
 	bot.core.AddHandler(consts.OnGuildDelete, handler)
 }
