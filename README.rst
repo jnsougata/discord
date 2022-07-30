@@ -12,7 +12,6 @@ Quick Example
         "fmt"
         "github.com/jnsougata/disgo/client"
         "github.com/jnsougata/disgo/command"
-        "github.com/jnsougata/disgo/discord"
         "github.com/jnsougata/disgo/intents"
         "github.com/jnsougata/disgo/interaction"
         "github.com/jnsougata/disgo/presence"
@@ -21,10 +20,10 @@ Quick Example
     )
 
     func main() {
-        d := discord.Client{Intent: intents.All(), Chunk: true, Presence: p}.New()
-        d.AddCommands(ping)
-        d.OnReady(onReady)
-        d.Run(os.Getenv("DISCORD_TOKEN"))
+        c := client.New(client.Client{Intent: intents.All(), Chunk: true, Presence: p})
+        c.AddCommands(ping)
+        c.OnReady(onReady)
+        c.Run(os.Getenv("DISCORD_TOKEN"))
     }
 
     func onReady(bot client.User) {
