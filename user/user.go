@@ -5,7 +5,7 @@ type User struct {
 	Username      string `json:"username"`
 	Discriminator string `json:"discriminator"`
 	Avatar        string `json:"avatar"`
-	Bot           bool   `json:"client"`
+	Bot           bool   `json:"bot"`
 	System        bool   `json:"system"`
 	MfaEnabled    bool   `json:"mfa_enabled"`
 	Banner        string `json:"banner"`

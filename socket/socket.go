@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/jnsougata/disgo/client"
+	"github.com/jnsougata/disgo/bot"
 	"github.com/jnsougata/disgo/command"
 	"github.com/jnsougata/disgo/component"
 	"github.com/jnsougata/disgo/consts"
@@ -37,7 +37,7 @@ type runtime struct {
 	}
 }
 
-var bot *client.User
+var b *bot.User
 var latency int64
 var beatSent int64
 var interval float64
@@ -147,16 +147,16 @@ func (sock *Socket) Run(token string) {
 		var r runtime
 		r.Sequence = wsmsg.Sequence
 		if wsmsg.Event == consts.OnReady {
-			b, _ := json.Marshal(wsmsg.Data)
-			_ = json.Unmarshal(b, &r)
+			ba, _ := json.Marshal(wsmsg.Data)
+			_ = json.Unmarshal(ba, &r)
 			for _, cmd := range queue {
 				go registerCommand(cmd, token, r.Application.Id)
 			}
-			bot = client.Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
-			bot.Latency = latency
+			b = bot.Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
+			b.Latency = latency
 			execLocked = false
 			if _, ok := eventHooks[consts.OnReady]; ok {
-				go eventHooks[consts.OnReady].(func(bot client.User))(*bot)
+				go eventHooks[consts.OnReady].(func(bot bot.User))(*b)
 			}
 		}
 		if wsmsg.Op == 10 {
@@ -167,8 +167,8 @@ func (sock *Socket) Run(token string) {
 		if wsmsg.Op == 11 {
 			beatReceived = time.Now().UnixMilli()
 			latency = beatReceived - beatSent
-			if bot != nil {
-				bot.Latency = latency
+			if b != nil {
+				b.Latency = latency
 			}
 		}
 		if wsmsg.Op == 7 {
@@ -215,14 +215,14 @@ func eventHandler(event string, data map[string]interface{}) {
 
 	case consts.OnMessageCreate:
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot client.User, message message.Message))
-			go eventHook(*bot, *message.FromData(data))
+			eventHook := eventHooks[event].(func(bot bot.User, message message.Message))
+			go eventHook(*b, *message.FromData(data))
 		}
 
 	case consts.OnGuildCreate:
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot client.User, guild guild.Guild))
-			go eventHook(*bot, *guild.Unmarshal(data))
+			eventHook := eventHooks[event].(func(bot bot.User, guild guild.Guild))
+			go eventHook(*b, *guild.Unmarshal(data))
 		}
 
 	case consts.OnInteractionCreate:
@@ -230,8 +230,8 @@ func eventHandler(event string, data map[string]interface{}) {
 		i := interaction.FromData(data)
 
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot client.User, ctx interaction.Interaction))
-			go eventHook(*bot, *i)
+			eventHook := eventHooks[event].(func(bot bot.User, ctx interaction.Interaction))
+			go eventHook(*b, *i)
 		}
 		switch i.Type {
 		case 1:
@@ -243,8 +243,8 @@ func eventHandler(event string, data map[string]interface{}) {
 				ApplicationId: i.ApplicationId,
 			}
 			if _, ok := commandHooks[i.Data.Id]; ok {
-				hook := commandHooks[i.Data.Id].(func(bot client.User, ctx command.Context, ops ...interaction.Option))
-				go hook(*bot, ctx, i.Data.Options...)
+				hook := commandHooks[i.Data.Id].(func(bot bot.User, ctx command.Context, ops ...interaction.Option))
+				go hook(*b, ctx, i.Data.Options...)
 			}
 		case 3:
 			factory := component.CallbackTasks
@@ -253,22 +253,22 @@ func eventHandler(event string, data map[string]interface{}) {
 			case 2:
 				cb, ok := factory[cc.Data.CustomId]
 				if ok {
-					callback := cb.(func(b client.User, ctx component.Context))
-					go callback(*bot, *cc)
+					callback := cb.(func(b bot.User, ctx component.Context))
+					go callback(*b, *cc)
 				}
 			case 3:
 				cb, ok := factory[cc.Data.CustomId]
 				if ok {
-					callback := cb.(func(b client.User, ctx component.Context, values ...string))
-					go callback(*bot, *cc, cc.Data.Values...)
+					callback := cb.(func(b bot.User, ctx component.Context, values ...string))
+					go callback(*b, *cc, cc.Data.Values...)
 				}
 			}
 			tmp, ok := component.TimeoutTasks[cc.Data.CustomId]
 			if ok {
-				onTimeoutHandler := tmp[1].(func(b client.User, i component.Context))
+				onTimeoutHandler := tmp[1].(func(b bot.User, i component.Context))
 				duration := tmp[0].(float64)
 				delete(component.TimeoutTasks, cc.Data.CustomId)
-				go scheduleTimeoutTask(duration, *bot, *cc, onTimeoutHandler)
+				go scheduleTimeoutTask(duration, *b, *cc, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
@@ -276,7 +276,7 @@ func eventHandler(event string, data map[string]interface{}) {
 			cc := component.FromData(data)
 			callback, ok := component.CallbackTasks[cc.Data.CustomId]
 			if ok {
-				go callback.(func(b client.User, cc component.Context))(*bot, *cc)
+				go callback.(func(b bot.User, cc component.Context))(*b, *cc)
 				delete(component.CallbackTasks, cc.Data.CustomId)
 			}
 		default:
@@ -286,8 +286,8 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 }
 
-func scheduleTimeoutTask(timeout float64, user client.User, cc component.Context,
-	handler func(bot client.User, cc component.Context)) {
+func scheduleTimeoutTask(timeout float64, user bot.User, cc component.Context,
+	handler func(bot bot.User, cc component.Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
 	handler(user, cc)
 }
