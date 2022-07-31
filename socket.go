@@ -263,7 +263,7 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 				delete(callbackTasks, ctx.ComponentData.CustomId)
 			}
 		default:
-			log.Println("Unknown interaction type: ", ctx.Type)
+			log.Println("Unknown interaction type:", ctx.Type)
 		}
 	default:
 	}
