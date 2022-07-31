@@ -169,7 +169,7 @@ func (c *Context) Edit(resp Response) {
 }
 
 func (c *Context) Delete() {
-	path := fmt.Sprintf("/interactions/%s/%s/messages/@original", c.Id, c.Token)
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
 	r := MinimalReq("DELETE", path, nil, "")
 	go r.Request()
 }
