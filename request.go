@@ -61,6 +61,7 @@ func (obj *MinimalRouter) Request() *http.Response {
 	}
 	return resp
 }
+
 func MinimalReq(method string, path string, data map[string]interface{}, token string) *MinimalRouter {
 	return &MinimalRouter{Method: method, Path: path, Data: data, Token: token}
 }

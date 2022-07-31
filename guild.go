@@ -59,7 +59,7 @@ type Guild struct {
 	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
 }
 
-func DataToGuild(payload interface{}) *Guild {
+func UnmarshalGuild(payload interface{}) *Guild {
 	guild := &Guild{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, guild)
@@ -69,7 +69,7 @@ func DataToGuild(payload interface{}) *Guild {
 func (guild *Guild) UnmarshalMembers(objs []interface{}) {
 	var members = map[string]Member{}
 	for _, o := range objs {
-		uo := DataToMember(o)
+		uo := UnmarshalMember(o)
 		uo.GuildId = guild.Id
 		members[uo.User.Id] = *uo
 	}
@@ -89,7 +89,7 @@ func (guild *Guild) UnmarshalRoles(objs []interface{}) {
 func (guild *Guild) UnmarshalChannels(objs []interface{}) {
 	var chs = map[string]Channel{}
 	for _, o := range objs {
-		uo := DataToChannel(o)
+		uo := UnmarshalChannel(o)
 		chs[uo.Id] = *uo
 	}
 	guild.Channels = chs

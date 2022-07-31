@@ -34,7 +34,7 @@ type Message struct {
 	Stickers           []map[string]interface{} `json:"sticker_items"`
 }
 
-func DataToMessage(payload interface{}) *Message {
+func UnmarshalMessage(payload interface{}) *Message {
 	msg := &Message{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, msg)

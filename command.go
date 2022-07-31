@@ -2,6 +2,7 @@ package disgo
 
 import (
 	"fmt"
+	"github.com/jnsougata/disgo/bot"
 )
 
 type CommandOption struct {
@@ -19,6 +20,7 @@ type CommandOption struct {
 	Choices      []Choice        `json:"choices,omitempty"`       // for type 3 and 4 and 10 only
 }
 
+// ApplicationCommand is a base type for all discord application commands
 type ApplicationCommand struct {
 	Type              int    // 1: slash command, 2: user command, 3: message command
 	Name              string // must be less than 32 characters
@@ -27,12 +29,12 @@ type ApplicationCommand struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
-	Handler           func(bot BotUser, ctx Context, options ...SlashCommandOption)
+	Handler           func(bot bot.User, ctx Context, options ...SlashCommandOption)
 }
 
 func (cmd *ApplicationCommand) Marshal() (
 	map[string]interface{},
-	func(bot BotUser, ctx Context, options ...SlashCommandOption),
+	func(bot bot.User, ctx Context, options ...SlashCommandOption),
 	int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {

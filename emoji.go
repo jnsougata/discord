@@ -18,7 +18,7 @@ type Emoji struct {
 	RequireColons bool     `json:"require_colons"`
 }
 
-func DataToEmoji(payload interface{}) *Emoji {
+func UnmarshalEmoji(payload interface{}) *Emoji {
 	emoji := &Emoji{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, emoji)

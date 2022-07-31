@@ -29,7 +29,7 @@ type Activity struct {
 	URL  string `json:"url"`  // "url" of type 3 (streaming) activity only
 }
 
-func (a *Activity) ToData() map[string]interface{} {
+func (a *Activity) Marshal() map[string]interface{} {
 	activity := map[string]interface{}{}
 	if a.Name != "" {
 		activity["name"] = a.Name

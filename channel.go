@@ -2,6 +2,7 @@ package disgo
 
 import "encoding/json"
 
+// Channel represents a Discord channel of any type
 type Channel struct {
 	Id                         string        `json:"id"`
 	Type                       int           `json:"type"`
@@ -32,7 +33,7 @@ type Channel struct {
 	TotalMessages              int           `json:"total_messages"`
 }
 
-func DataToChannel(payload interface{}) *Channel {
+func UnmarshalChannel(payload interface{}) *Channel {
 	ch := &Channel{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, ch)

@@ -1,53 +1,44 @@
 package disgo
 
-func New(client Client) *connection {
-	return &connection{
-		Sock: &Socket{
-			Intent:   client.Intent,
-			Memoize:  client.Chunk,
-			Presence: client.Presence,
-		},
-	}
-}
+import "github.com/jnsougata/disgo/bot"
 
-type Client struct {
-	Intent   int
-	Chunk    bool
-	Presence Presence
+// Bot is a function that represents a connection to discord.
+func Bot(intent int, cache bool, presence Presence) *connection {
+	return &connection{sock: &Socket{Intent: intent, Memoize: cache, Presence: presence}}
 }
 
 type connection struct {
-	Sock *Socket
+	sock *Socket
 }
 
-func (conn *connection) Run(token string) {
-	conn.Sock.Run(token)
+func (con *connection) Run(token string) {
+	con.sock.Run(token)
 }
 
-func (conn *connection) AddCommands(commands ...ApplicationCommand) {
-	conn.Sock.RegistrationQueue(commands...)
+func (con *connection) AddCommands(commands ...ApplicationCommand) {
+	con.sock.RegistrationQueue(commands...)
 }
 
-func (conn *connection) OnSocketReceive(handler func(payload map[string]interface{})) {
-	conn.Sock.AddHandler(OnSocketReceive, handler)
+func (con *connection) OnSocketReceive(handler func(payload map[string]interface{})) {
+	con.sock.AddHandler(OnSocketReceive, handler)
 }
 
-func (conn *connection) OnMessage(handler func(bot BotUser, message Message)) {
-	conn.Sock.AddHandler(OnMessageCreate, handler)
+func (con *connection) OnMessage(handler func(bot bot.User, message Message)) {
+	con.sock.AddHandler(OnMessageCreate, handler)
 }
 
-func (conn *connection) OnReady(handler func(bot BotUser)) {
-	conn.Sock.AddHandler(OnReady, handler)
+func (con *connection) OnReady(handler func(bot bot.User)) {
+	con.sock.AddHandler(OnReady, handler)
 }
 
-func (conn *connection) OnInteraction(handler func(bot BotUser, ctx *Context)) {
-	conn.Sock.AddHandler(OnInteractionCreate, handler)
+func (con *connection) OnInteraction(handler func(bot bot.User, ctx *Context)) {
+	con.sock.AddHandler(OnInteractionCreate, handler)
 }
 
-func (conn *connection) OnGuildJoin(handler func(bot BotUser, guild Guild)) {
-	conn.Sock.AddHandler(OnGuildCreate, handler)
+func (con *connection) OnGuildJoin(handler func(bot bot.User, guild Guild)) {
+	con.sock.AddHandler(OnGuildCreate, handler)
 }
 
-func (conn *connection) OnGuildLeave(handler func(bot BotUser, guild Guild)) {
-	conn.Sock.AddHandler(OnGuildDelete, handler)
+func (con *connection) OnGuildLeave(handler func(bot bot.User, guild Guild)) {
+	con.sock.AddHandler(OnGuildDelete, handler)
 }

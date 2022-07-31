@@ -18,7 +18,7 @@ type Member struct {
 	GuildId       string   `json:"guild_id"`
 }
 
-func DataToMember(payload interface{}) *Member {
+func UnmarshalMember(payload interface{}) *Member {
 	m := &Member{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, m)
