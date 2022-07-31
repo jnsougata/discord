@@ -58,12 +58,12 @@ type Modal struct {
 	SelectMenus []SelectMenu
 }
 
-func (m *Modal) OnSubmit(handler func(bot bot.User, interaction Interaction)) {
+func (m *Modal) OnSubmit(handler func(bot bot.User, ctx Context)) {
 	m.CustomId = AssignId(m.CustomId)
 	CallbackTasks[m.CustomId] = handler
 }
 
-func (m *Modal) ToBody() map[string]interface{} {
+func (m *Modal) Marshal() map[string]interface{} {
 	modal := map[string]interface{}{}
 	modal["title"] = m.Title
 	modal["custom_id"] = AssignId(m.CustomId)

@@ -28,12 +28,12 @@ type ApplicationCommand struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
-	Handler           func(bot bot.User, ctx CommandContext, options ...SlashCommandOption)
+	Handler           func(bot bot.User, ctx Context, options ...SlashCommandOption)
 }
 
 func (cmd *ApplicationCommand) Marshal() (
 	map[string]interface{},
-	func(bot bot.User, ctx CommandContext, options ...SlashCommandOption),
+	func(bot bot.User, ctx Context, options ...SlashCommandOption),
 	int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {

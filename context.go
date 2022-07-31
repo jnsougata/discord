@@ -5,7 +5,25 @@ import (
 	"fmt"
 )
 
-type ComponentResponse struct {
+type Component struct {
+	CustomId string   `json:"custom_id"`
+	Type     int      `json:"type"`
+	Value    string   `json:"value"`
+	Values   []string `json:"values"`
+}
+
+type Row struct {
+	Components []Component
+}
+
+type ComponentData struct {
+	ComponentType int      `json:"component_type"`
+	CustomId      string   `json:"custom_id"`
+	Values        []string `json:"values"`
+	Components    []Row    `json:"components"`
+}
+
+type Response struct {
 	Content         string
 	Embed           Embed
 	Embeds          []Embed
@@ -18,7 +36,7 @@ type ComponentResponse struct {
 	Files           []File
 }
 
-func (resp *ComponentResponse) ToBody() map[string]interface{} {
+func (resp *Response) Marshal() map[string]interface{} {
 	flag := 0
 	body := map[string]interface{}{}
 	if resp.Content != "" {
@@ -76,29 +94,11 @@ func (resp *ComponentResponse) ToBody() map[string]interface{} {
 	return body
 }
 
-type Component struct {
-	CustomId string   `json:"custom_id"`
-	Type     int      `json:"type"`
-	Value    string   `json:"value"`
-	Values   []string `json:"values"`
-}
-
-type Row struct {
-	Components []Component
-}
-
-type ComponentData struct {
-	ComponentType int      `json:"component_type"`
-	CustomId      string   `json:"custom_id"`
-	Values        []string `json:"values"`
-	Components    []Row    `json:"components"`
-}
-
-type ComponentContext struct {
+type Context struct {
 	Id             string                 `json:"id"`
 	ApplicationId  string                 `json:"application_id"`
 	Type           int                    `json:"type"`
-	Data           ComponentData          `json:"data"`
+	Data           InteractionData        `json:"data"`
 	GuildId        string                 `json:"guild_id"`
 	ChannelId      string                 `json:"channel_id"`
 	Member         Member                 `json:"member"`
@@ -109,44 +109,60 @@ type ComponentContext struct {
 	AppPermissions string                 `json:"app_permissions"`
 	Locale         string                 `json:"locale"`
 	GuildLocale    string                 `json:"guild_locale"`
+	ComponentData  ComponentData          `json:"x_component"`
+	CommandData    []SlashCommandOption   `json:"x_command"`
 }
 
-func DataToComponentContext(payload interface{}) *ComponentContext {
-	i := &ComponentContext{}
+func UnmarshalContext(payload interface{}) *Context {
+	c := &Context{}
 	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, i)
-	return i
+	_ = json.Unmarshal(data, c)
+	return c
 }
 
-func (c *ComponentContext) SendResponse(resp ComponentResponse) {
+func (c *Context) SendResponse(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := MultipartReq(
-		"POST", path, map[string]interface{}{"type": 4, "data": resp.ToBody()}, "", resp.Files)
+		"POST", path, map[string]interface{}{"type": 4, "data": resp.Marshal()}, "", resp.Files)
 	go r.Request()
 }
 
-func (c *ComponentContext) Ack() {
-	body := map[string]interface{}{"type": 6}
+func (c *Context) Defer(ephemeral bool) {
+	body := map[string]interface{}{}
+	if c.Type == 2 {
+		body["type"] = 5
+		if ephemeral {
+			body["data"] = map[string]interface{}{"flags": 1 << 6}
+		}
+	} else {
+		body["type"] = 6
+	}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := MinimalReq("POST", path, body, "")
 	go r.Request()
 }
 
-func (c *ComponentContext) SendModal(modal Modal) {
+func (c *Context) SendModal(modal Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := MinimalReq("POST", path, modal.ToBody(), "")
+	r := MinimalReq("POST", path, modal.Marshal(), "")
 	go r.Request()
 }
 
-func (c *ComponentContext) SendFollowup(resp ComponentResponse) {
+func (c *Context) SendFollowup(resp Response) {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	r := MultipartReq("POST", path, resp.ToBody(), "", resp.Files)
+	r := MultipartReq("POST", path, resp.Marshal(), "", resp.Files)
 	go r.Request()
 }
 
-func (c *ComponentContext) EditOriginalMessage(resp ComponentResponse) {
+func (c *Context) EditComponentMessage(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	body := map[string]interface{}{"type": 7, "data": resp.ToBody()}
+	body := map[string]interface{}{"type": 7, "data": resp.Marshal()}
 	r := MultipartReq("POST", path, body, "", resp.Files)
+	go r.Request()
+}
+
+func (c *Context) EditOriginalMessage(resp Response) {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := MultipartReq("PATCH", path, resp.Marshal(), "", resp.Files)
 	go r.Request()
 }

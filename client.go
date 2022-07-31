@@ -44,7 +44,7 @@ func (conn *connection) OnReady(handler func(bot bot.User)) {
 	conn.Sock.AddHandler(OnReady, handler)
 }
 
-func (conn *connection) OnInteraction(handler func(bot bot.User, ctx CommandContext)) {
+func (conn *connection) OnInteraction(handler func(bot bot.User, ctx *Context)) {
 	conn.Sock.AddHandler(OnInteractionCreate, handler)
 }
 

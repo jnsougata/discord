@@ -219,70 +219,66 @@ func eventHandler(event string, data map[string]interface{}) {
 		}
 
 	case OnInteractionCreate:
-
-		i := DataToInteraction(data)
-
+		ctx := UnmarshalContext(data)
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot bot.User, ctx Interaction))
-			go eventHook(*b, *i)
+			eventHook := eventHooks[event].(func(bot bot.User, ctx Context))
+			go eventHook(*b, *ctx)
 		}
-		switch i.Type {
+		switch ctx.Type {
 		case 1:
 			// interaction ping
 		case 2:
-			ctx := CommandContext{
-				Id:            i.Id,
-				Token:         i.Token,
-				ApplicationId: i.ApplicationId,
-			}
-			if _, ok := commandHooks[i.Data.Id]; ok {
-				hook := commandHooks[i.Data.Id].(func(bot bot.User, ctx CommandContext, ops ...SlashCommandOption))
-				go hook(*b, ctx, i.Data.Options...)
+
+			if _, ok := commandHooks[ctx.Data.Id]; ok {
+				hook := commandHooks[ctx.Data.Id].(func(bot bot.User, ctx Context, ops ...SlashCommandOption))
+				go hook(*b, *ctx, ctx.Data.Options...)
 			}
 		case 3:
 			factory := CallbackTasks
-			cc := DataToComponentContext(data)
-			switch cc.Data.ComponentType {
+			var compdata ComponentData
+			da, _ := json.Marshal(data["data"].(map[string]interface{}))
+			_ = json.Unmarshal(da, &compdata)
+			ctx.ComponentData = compdata
+			switch ctx.ComponentData.ComponentType {
 			case 2:
-				cb, ok := factory[cc.Data.CustomId]
+				cb, ok := factory[ctx.ComponentData.CustomId]
 				if ok {
-					callback := cb.(func(b bot.User, ctx ComponentContext))
-					go callback(*b, *cc)
+					callback := cb.(func(b bot.User, ctx Context))
+					go callback(*b, *ctx)
 				}
 			case 3:
-				cb, ok := factory[cc.Data.CustomId]
+				cb, ok := factory[ctx.ComponentData.CustomId]
 				if ok {
-					callback := cb.(func(b bot.User, ctx ComponentContext, values ...string))
-					go callback(*b, *cc, cc.Data.Values...)
+					callback := cb.(func(b bot.User, ctx Context, values ...string))
+					go callback(*b, *ctx, ctx.ComponentData.Values...)
 				}
 			}
-			tmp, ok := TimeoutTasks[cc.Data.CustomId]
+			tmp, ok := TimeoutTasks[ctx.ComponentData.CustomId]
 			if ok {
-				onTimeoutHandler := tmp[1].(func(b bot.User, i ComponentContext))
+				onTimeoutHandler := tmp[1].(func(b bot.User, ctx Context))
 				duration := tmp[0].(float64)
-				delete(TimeoutTasks, cc.Data.CustomId)
-				go scheduleTimeoutTask(duration, *b, *cc, onTimeoutHandler)
+				delete(TimeoutTasks, ctx.ComponentData.CustomId)
+				go scheduleTimeoutTask(duration, *b, *ctx, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
-			cc := DataToComponentContext(data)
-			callback, ok := CallbackTasks[cc.Data.CustomId]
+			callback, ok := CallbackTasks[ctx.ComponentData.CustomId]
 			if ok {
-				go callback.(func(b bot.User, cc ComponentContext))(*b, *cc)
-				delete(CallbackTasks, cc.Data.CustomId)
+				go callback.(func(b bot.User, ctx *Context))(*b, ctx)
+				delete(CallbackTasks, ctx.ComponentData.CustomId)
 			}
 		default:
-			log.Println("Unknown interaction type: ", i.Type)
+			log.Println("Unknown interaction type: ", ctx.Type)
 		}
 	default:
 	}
 }
 
-func scheduleTimeoutTask(timeout float64, user bot.User, cc ComponentContext,
-	handler func(bot bot.User, cc ComponentContext)) {
+func scheduleTimeoutTask(timeout float64, user bot.User, ctx Context,
+	handler func(bot bot.User, ctx Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
-	handler(user, cc)
+	handler(user, ctx)
 }
 
 func requestMembers(conn *websocket.Conn, guildId string) {
