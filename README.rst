@@ -10,45 +10,39 @@ Quick Example
 
     import (
         "fmt"
-        "github.com/jnsougata/disgo/client"
-        "github.com/jnsougata/disgo/command"
-        "github.com/jnsougata/disgo/intents"
-        "github.com/jnsougata/disgo/interaction"
-        "github.com/jnsougata/disgo/presence"
-        "log"
+        "github.com/jnsougata/disgo/bot"
         "os"
     )
 
     func main() {
-        c := client.New(client.Client{Intent: intents.All(), Chunk: true, Presence: p})
-        c.AddCommands(ping)
+        c := New(Client{
+            Intent: Intents{}.All(),
+            Chunk:  true,
+            Presence: Presence{
+                Status:   "online",
+                OnMobile: true,
+                Activity: Activity{
+                    Type: 3,
+                    Name: "with Rick Astley",
+                    URL:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                },
+            },
+        })
         c.OnReady(onReady)
+        c.AddCommands(ping)
         c.Run(os.Getenv("DISCORD_TOKEN"))
     }
 
-    func onReady(bot client.User) {
-        log.Println(fmt.Sprintf(
-            "Logged in as %s#%s (Id: %s)",
-            bot.Username, bot.Discriminator, bot.Id,
-        ))
-        log.Println("---------")
+    func onReady(b bot.User) {
+        fmt.Println(fmt.Sprintf("Running %s#%s (ID: %s)", b.Username, b.Discriminator, b.Id))
+        fmt.Println("-------")
     }
 
-    var p = presence.Presence{
-        Status:       "idle",
-        AFK:          false,
-        ClientStatus: "mobile",
-        Activity: presence.Activity{
-            Name: "LO:FI",
-            Type: 3,
-            URL:  "https://www.youtube.com/....",
-        },
-    }
-
-    var ping = command.ApplicationCommand{
+    var ping = ApplicationCommand{
         Name:        "ping",
-        Description: "shows the latency of the client",
-        Handler: func(b client.User, ctx command.Context, ops ...interaction.Option) {
-            ctx.SendResponse(command.Message{Content: fmt.Sprintf("Pong! %vms", b.Latency)})
+        Description: "shows the bot latency",
+        Handler: func(b bot.User, ctx CommandContext, ops ...SlashCommandOption) {
+            ctx.SendResponse(CommandResponse{Content: fmt.Sprintf("Pong! %dms", b.Latency)})
         },
     }
+
