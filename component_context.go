@@ -37,7 +37,7 @@ func (resp *ComponentResponse) ToBody() map[string]interface{} {
 	}
 	body["embeds"] = []map[string]interface{}{}
 	for _, em := range resp.Embeds {
-		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.ToBody())
+		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.Marshal())
 	}
 	if len(resp.AllowedMentions) > 0 && len(resp.AllowedMentions) <= 100 {
 		body["allowed_mentions"] = resp.AllowedMentions
@@ -111,7 +111,7 @@ type ComponentContext struct {
 	GuildLocale    string                 `json:"guild_locale"`
 }
 
-func FromData(payload interface{}) *ComponentContext {
+func DataToComponentContext(payload interface{}) *ComponentContext {
 	i := &ComponentContext{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, i)

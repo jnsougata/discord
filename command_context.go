@@ -17,7 +17,7 @@ type CommandResponse struct {
 	Files           []File
 }
 
-func (resp *CommandResponse) ToBody() map[string]interface{} {
+func (resp *CommandResponse) Marshal() map[string]interface{} {
 	flag := 0
 	body := map[string]interface{}{}
 	if resp.Content != "" {
@@ -36,7 +36,7 @@ func (resp *CommandResponse) ToBody() map[string]interface{} {
 	}
 	body["embeds"] = []map[string]interface{}{}
 	for _, em := range resp.Embeds {
-		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.ToBody())
+		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.Marshal())
 	}
 	if len(resp.AllowedMentions) > 0 && len(resp.AllowedMentions) <= 100 {
 		body["allowed_mentions"] = resp.AllowedMentions
@@ -85,7 +85,7 @@ func (c *CommandContext) SendResponse(resp CommandResponse) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body := map[string]interface{}{
 		"type": 4,
-		"data": resp.ToBody(),
+		"data": resp.Marshal(),
 	}
 	r := MultipartReq("POST", path, body, "", resp.Files)
 	go r.Request()
@@ -126,7 +126,7 @@ func (c *CommandContext) SendAutoComplete(choices ...Choice) {
 
 func (c *CommandContext) SendFollowup(resp CommandResponse) {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	r := MultipartReq("POST", path, resp.ToBody(), "", resp.Files)
+	r := MultipartReq("POST", path, resp.Marshal(), "", resp.Files)
 	go r.Request()
 }
 
@@ -138,6 +138,6 @@ func (c *CommandContext) DeleteOriginalResponse() {
 
 func (c *CommandContext) EditOriginalResponse(resp CommandResponse) {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := MultipartReq("PATCH", path, resp.ToBody(), "", resp.Files)
+	r := MultipartReq("PATCH", path, resp.Marshal(), "", resp.Files)
 	go r.Request()
 }

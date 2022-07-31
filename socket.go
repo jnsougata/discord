@@ -241,7 +241,7 @@ func eventHandler(event string, data map[string]interface{}) {
 			}
 		case 3:
 			factory := CallbackTasks
-			cc := FromData(data)
+			cc := DataToComponentContext(data)
 			switch cc.Data.ComponentType {
 			case 2:
 				cb, ok := factory[cc.Data.CustomId]
@@ -266,7 +266,7 @@ func eventHandler(event string, data map[string]interface{}) {
 		case 4:
 			// handle auto-complete interaction
 		case 5:
-			cc := FromData(data)
+			cc := DataToComponentContext(data)
 			callback, ok := CallbackTasks[cc.Data.CustomId]
 			if ok {
 				go callback.(func(b bot.User, cc ComponentContext))(*b, *cc)

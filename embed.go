@@ -37,7 +37,7 @@ type Embed struct {
 	Fields      []Field `json:"fields"`
 }
 
-func (e *Embed) ToBody() map[string]interface{} {
+func (e *Embed) Marshal() map[string]interface{} {
 	embed := map[string]interface{}{}
 	if e.Title != "" && len(e.Title) <= 256 {
 		embed["title"] = e.Title
