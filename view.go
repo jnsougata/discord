@@ -1,12 +1,11 @@
 package disgo
 
 import (
-	"github.com/jnsougata/disgo/bot"
 	"log"
 )
 
-var CallbackTasks = map[string]interface{}{}
-var TimeoutTasks = map[string][]interface{}{}
+var callbackTasks = map[string]interface{}{}
+var timeoutTasks = map[string][]interface{}{}
 
 type Button struct {
 	Style    int    // default: 1 (blue) More: 2 (grey), 3 (green), 4 (red), 5 (link)
@@ -15,13 +14,13 @@ type Button struct {
 	URL      string // only for style 5 (link)
 	Disabled bool
 	CustomId string // filled internally
-	OnClick  func(bot bot.User, ctx Context)
+	OnClick  func(bot BotUser, ctx Context)
 }
 
 func (b *Button) Marshal() map[string]interface{} {
 	b.CustomId = AssignId("")
 	if b.OnClick != nil {
-		CallbackTasks[b.CustomId] = b.OnClick
+		callbackTasks[b.CustomId] = b.OnClick
 	}
 	btn := map[string]interface{}{
 		"type":      2,
@@ -86,13 +85,13 @@ type SelectMenu struct {
 	MinValues   int            // default: 0
 	MaxValues   int            // default: 1
 	Disabled    bool
-	OnSelection func(bot bot.User, ctx Context, values ...string)
+	OnSelection func(bot BotUser, ctx Context, values ...string)
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
 	s.CustomId = AssignId("")
 	if s.OnSelection != nil {
-		CallbackTasks[s.CustomId] = s.OnSelection
+		callbackTasks[s.CustomId] = s.OnSelection
 	}
 	menu := map[string]interface{}{"type": 3, "custom_id": s.CustomId}
 	if s.Placeholder != "" {
@@ -133,7 +132,7 @@ type ActionRow struct {
 type View struct {
 	Timeout    float64     // default: 15 * 60 seconds
 	ActionRows []ActionRow // max 5 rows
-	OnTimeout  func(bot bot.User, ctx Context)
+	OnTimeout  func(bot BotUser, ctx Context)
 }
 
 func (v *View) AddRow(row ActionRow) {
@@ -176,7 +175,7 @@ func (v *View) ToComponent() []interface{} {
 			if num < 5 {
 				undo[button.CustomId] = true
 				if v.OnTimeout != nil {
-					TimeoutTasks[button.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					timeoutTasks[button.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
 				}
 				tmp["components"] = append(tmp["components"].([]interface{}), button.Marshal())
 				num++
@@ -186,7 +185,7 @@ func (v *View) ToComponent() []interface{} {
 			if num == 0 {
 				undo[row.SelectMenu.CustomId] = true
 				if v.OnTimeout != nil {
-					TimeoutTasks[row.SelectMenu.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					timeoutTasks[row.SelectMenu.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
 				}
 				tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
 			} else {
@@ -195,7 +194,7 @@ func (v *View) ToComponent() []interface{} {
 		}
 		if len(undo) > 0 {
 			c = append(c, tmp)
-			go ScheduleDeletion(v.Timeout, CallbackTasks, undo)
+			go ScheduleDeletion(v.Timeout, callbackTasks, undo)
 		}
 	}
 	return c

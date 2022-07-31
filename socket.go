@@ -4,41 +4,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/jnsougata/disgo/bot"
 	"io"
 	"log"
 	"net/http"
 	"time"
 )
 
-type runtime struct {
-	SessionId   string `json:"session_id"`
-	Sequence    int
-	Application struct {
-		Id    string  `json:"id"`
-		Flags float64 `json:"flags"`
-	} `json:"application"`
-	User struct {
-		Bot           bool    `json:"bot"`
-		Avatar        string  `json:"avatar"`
-		Discriminator string  `json:"discriminator"`
-		Flags         float64 `json:"flags"`
-		MFAEnabled    bool    `json:"mfa_enabled"`
-		Username      string  `json:"username"`
-		Verified      bool    `json:"verified"`
-	}
-}
+var islocked = false
 
-var b *bot.User
-var latency int64
-var beatSent int64
-var isready = false
-var interval float64
-var beatReceived int64
-var queue []ApplicationCommand
-var eventHooks = map[string]interface{}{}
-var commandHooks = map[string]interface{}{}
-var guilds = map[string]*Guild{}
+type Socket struct {
+	Intent       int
+	Memoize      bool
+	Presence     Presence
+	interval     float64
+	beatSent     int64
+	beatAck      int64
+	latency      int64
+	self         *BotUser
+	guilds       map[string]*Guild
+	queue        []ApplicationCommand
+	eventHooks   map[string]interface{}
+	commandHooks map[string]interface{}
+	sequence     int
+	sessionId    string
+}
 
 func (sock *Socket) getGateway() string {
 	data, _ := http.Get("https://discord.com/api/gateway")
@@ -48,16 +37,10 @@ func (sock *Socket) getGateway() string {
 	return fmt.Sprintf("%s?v=10&encoding=json", payload["url"])
 }
 
-type Socket struct {
-	Intent   int
-	Memoize  bool
-	Presence Presence
-}
-
 func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {
 	for {
 		_ = conn.WriteJSON(map[string]interface{}{"op": 1, "d": 251})
-		beatSent = time.Now().UnixMilli()
+		sock.beatSent = time.Now().UnixMilli()
 		time.Sleep(time.Duration(dur) * time.Millisecond)
 	}
 }
@@ -82,7 +65,9 @@ func (sock *Socket) identify(conn *websocket.Conn, Token string, intent int) {
 			Browser: "disgo",
 			Device:  "disgo",
 		},
-		Presence: sock.Presence.Marshal(),
+	}
+	if sock.Presence.Activity.Name != "" {
+		d.Presence = sock.Presence.Marshal()
 	}
 	if sock.Presence.OnMobile {
 		d.Properties.Browser = "Discord iOS"
@@ -91,17 +76,20 @@ func (sock *Socket) identify(conn *websocket.Conn, Token string, intent int) {
 	_ = conn.WriteJSON(payload)
 }
 
-func (sock *Socket) AddHandler(name string, fn interface{}) {
-	eventHooks[name] = fn
+func (sock *Socket) AddHandler(name string, handler interface{}) {
+	if sock.eventHooks == nil {
+		sock.eventHooks = make(map[string]interface{})
+	}
+	sock.eventHooks[name] = handler
 }
 
-func (sock *Socket) RegistrationQueue(commands ...ApplicationCommand) {
+func (sock *Socket) AddToQueue(commands ...ApplicationCommand) {
 	for _, com := range commands {
-		queue = append(queue, com)
+		sock.queue = append(sock.queue, com)
 	}
 }
 
-func registerCommand(com ApplicationCommand, token string, applicationId string) {
+func (sock *Socket) registerCommand(com ApplicationCommand, token string, applicationId string) {
 	var route string
 	data, hook, guildId := com.Marshal()
 	if guildId != 0 {
@@ -115,18 +103,20 @@ func registerCommand(com ApplicationCommand, token string, applicationId string)
 	_ = json.Unmarshal(body, &d)
 	_, ok := d["id"]
 	if ok {
-		commandHooks[d["id"].(string)] = hook
+		sock.commandHooks[d["id"].(string)] = hook
 	} else {
 		log.Fatal(
-			fmt.Sprintf("Failed to register command {%s}. Code %s", com.Name, d["message"]))
+			fmt.Sprintf("Failed to register command {%s}. Reason: %s", com.Name, d["message"]))
 	}
 }
 
 func (sock *Socket) Run(token string) {
+	sock.guilds = make(map[string]*Guild)
+	sock.commandHooks = make(map[string]interface{})
 	wss := sock.getGateway()
 	conn, _, err := websocket.DefaultDialer.Dial(wss, nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	for {
 		var wsmsg struct {
@@ -136,32 +126,39 @@ func (sock *Socket) Run(token string) {
 			Data     map[string]interface{} `json:"d"`
 		}
 		_ = conn.ReadJSON(&wsmsg)
-		var r runtime
-		r.Sequence = wsmsg.Sequence
+		var runtime struct {
+			SessionId   string `json:"session_id"`
+			Sequence    int
+			Application struct {
+				Id    string  `json:"id"`
+				Flags float64 `json:"flags"`
+			} `json:"application"`
+		}
+		sock.sequence = wsmsg.Sequence
 		if wsmsg.Event == OnReady {
 			ba, _ := json.Marshal(wsmsg.Data)
-			_ = json.Unmarshal(ba, &r)
-			for _, cmd := range queue {
-				go registerCommand(cmd, token, r.Application.Id)
+			_ = json.Unmarshal(ba, &runtime)
+			for _, cmd := range sock.queue {
+				go sock.registerCommand(cmd, token, runtime.Application.Id)
 			}
-			b = bot.Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
-			b.Latency = latency
-			isready = true
-			b.IsReady = true
-			if _, ok := eventHooks[OnReady]; ok {
-				go eventHooks[OnReady].(func(bot bot.User))(*b)
+			sock.self = Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
+			sock.self.Latency = sock.latency
+			sock.self.IsReady = true
+			islocked = false
+			if hook, ok := sock.eventHooks[OnReady]; ok {
+				go hook.(func(bot BotUser))(*sock.self)
 			}
 		}
 		if wsmsg.Op == 10 {
-			interval = wsmsg.Data["heartbeat_interval"].(float64)
+			sock.interval = wsmsg.Data["heartbeat_interval"].(float64)
 			sock.identify(conn, token, sock.Intent)
-			go sock.keepAlive(conn, int(interval))
+			go sock.keepAlive(conn, int(sock.interval))
 		}
 		if wsmsg.Op == 11 {
-			beatReceived = time.Now().UnixMilli()
-			latency = beatReceived - beatSent
-			if b != nil {
-				b.Latency = latency
+			sock.beatAck = time.Now().UnixMilli()
+			sock.latency = sock.beatAck - sock.beatSent
+			if sock.self != nil {
+				sock.self.Latency = sock.latency
 			}
 		}
 		if wsmsg.Op == 7 {
@@ -169,16 +166,16 @@ func (sock *Socket) Run(token string) {
 				"op": 6,
 				"d": map[string]interface{}{
 					"token":      token,
-					"session_id": r.SessionId,
-					"sequence":   r.Sequence,
+					"sequence":   sock.sequence,
+					"session_id": sock.sessionId,
 				},
 			})
 		}
 		if wsmsg.Op == 9 {
 			sock.identify(conn, token, sock.Intent)
 		}
-		eventHandler(wsmsg.Event, wsmsg.Data)
-		if h, ok := eventHooks[OnSocketReceive]; ok {
+		sock.eventHandler(wsmsg.Event, wsmsg.Data)
+		if h, ok := sock.eventHooks[OnSocketReceive]; ok {
 			handler := h.(func(d map[string]interface{}))
 			go handler(wsmsg.Data)
 		}
@@ -186,87 +183,84 @@ func (sock *Socket) Run(token string) {
 			gld := UnmarshalGuild(wsmsg.Data)
 			gld.UnmarshalRoles(wsmsg.Data["roles"].([]interface{}))
 			gld.UnmarshalChannels(wsmsg.Data["channels"].([]interface{}))
-			guilds[gld.Id] = gld
+			sock.guilds[gld.Id] = gld
+			sock.self.Guilds = sock.guilds
 			if sock.Memoize {
 				requestMembers(conn, gld.Id)
 			}
 		}
 		if wsmsg.Event == "GUILD_MEMBERS_CHUNK" {
-			isready = true
 			id := wsmsg.Data["guild_id"].(string)
-			guilds[id].UnmarshalMembers(wsmsg.Data["members"].([]interface{}))
-			isready = false
+			sock.guilds[id].UnmarshalMembers(wsmsg.Data["members"].([]interface{}))
 		}
 	}
 }
 
-func eventHandler(event string, data map[string]interface{}) {
-	if isready == true {
+func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
+	if islocked {
 		return
 	}
 	switch event {
 
 	case OnMessageCreate:
-		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot bot.User, message Message))
-			go eventHook(*b, *UnmarshalMessage(data))
+		if event, ok := sock.eventHooks[event]; ok {
+			hook := event.(func(bot BotUser, message Message))
+			go hook(*sock.self, *UnmarshalMessage(data))
 		}
 
 	case OnGuildCreate:
-		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot bot.User, guild Guild))
-			go eventHook(*b, *UnmarshalGuild(data))
+		if event, ok := sock.eventHooks[event]; ok {
+			hook := event.(func(bot BotUser, guild Guild))
+			go hook(*sock.self, *UnmarshalGuild(data))
 		}
 
 	case OnInteractionCreate:
 		ctx := UnmarshalContext(data)
-		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot bot.User, ctx Context))
-			go eventHook(*b, *ctx)
+		if event, ok := sock.eventHooks[event]; ok {
+			hook := event.(func(bot BotUser, ctx Context))
+			go hook(*sock.self, *ctx)
 		}
 		switch ctx.Type {
 		case 1:
 			// interaction ping
 		case 2:
-
-			if _, ok := commandHooks[ctx.Data.Id]; ok {
-				hook := commandHooks[ctx.Data.Id].(func(bot bot.User, ctx Context, ops ...SlashCommandOption))
-				go hook(*b, *ctx, ctx.Data.Options...)
+			if ev, ok := sock.commandHooks[ctx.Data.Id]; ok {
+				hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+				go hook(*sock.self, *ctx, ctx.Data.Options...)
 			}
 		case 3:
-			factory := CallbackTasks
 			var compdata ComponentData
 			da, _ := json.Marshal(data["data"].(map[string]interface{}))
 			_ = json.Unmarshal(da, &compdata)
 			ctx.ComponentData = compdata
 			switch ctx.ComponentData.ComponentType {
 			case 2:
-				cb, ok := factory[ctx.ComponentData.CustomId]
+				cb, ok := callbackTasks[ctx.ComponentData.CustomId]
 				if ok {
-					callback := cb.(func(b bot.User, ctx Context))
-					go callback(*b, *ctx)
+					callback := cb.(func(b BotUser, ctx Context))
+					go callback(*sock.self, *ctx)
 				}
 			case 3:
-				cb, ok := factory[ctx.ComponentData.CustomId]
+				cb, ok := callbackTasks[ctx.ComponentData.CustomId]
 				if ok {
-					callback := cb.(func(b bot.User, ctx Context, values ...string))
-					go callback(*b, *ctx, ctx.ComponentData.Values...)
+					callback := cb.(func(b BotUser, ctx Context, values ...string))
+					go callback(*sock.self, *ctx, ctx.ComponentData.Values...)
 				}
 			}
-			tmp, ok := TimeoutTasks[ctx.ComponentData.CustomId]
+			tmp, ok := timeoutTasks[ctx.ComponentData.CustomId]
 			if ok {
-				onTimeoutHandler := tmp[1].(func(b bot.User, ctx Context))
+				onTimeoutHandler := tmp[1].(func(b BotUser, ctx Context))
 				duration := tmp[0].(float64)
-				delete(TimeoutTasks, ctx.ComponentData.CustomId)
-				go scheduleTimeoutTask(duration, *b, *ctx, onTimeoutHandler)
+				delete(timeoutTasks, ctx.ComponentData.CustomId)
+				go scheduleTimeoutTask(duration, *sock.self, *ctx, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
-			callback, ok := CallbackTasks[ctx.ComponentData.CustomId]
+			callback, ok := callbackTasks[ctx.ComponentData.CustomId]
 			if ok {
-				go callback.(func(b bot.User, ctx *Context))(*b, ctx)
-				delete(CallbackTasks, ctx.ComponentData.CustomId)
+				go callback.(func(b BotUser, ctx *Context))(*sock.self, ctx)
+				delete(callbackTasks, ctx.ComponentData.CustomId)
 			}
 		default:
 			log.Println("Unknown interaction type: ", ctx.Type)
@@ -275,8 +269,8 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 }
 
-func scheduleTimeoutTask(timeout float64, user bot.User, ctx Context,
-	handler func(bot bot.User, ctx Context)) {
+func scheduleTimeoutTask(timeout float64, user BotUser, ctx Context,
+	handler func(bot BotUser, ctx Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
 	handler(user, ctx)
 }
