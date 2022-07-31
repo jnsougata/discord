@@ -1,8 +1,4 @@
-package main
-
-import (
-	"github.com/jnsougata/disgo/bot"
-)
+package disgo
 
 type TextInput struct {
 	CustomId    string `json:"custom_id"`   // filled internally
@@ -58,7 +54,7 @@ type Modal struct {
 	SelectMenus []SelectMenu
 }
 
-func (m *Modal) OnSubmit(handler func(bot bot.User, ctx Context)) {
+func (m *Modal) OnSubmit(handler func(bot BotUser, ctx Context)) {
 	m.CustomId = AssignId(m.CustomId)
 	CallbackTasks[m.CustomId] = handler
 }

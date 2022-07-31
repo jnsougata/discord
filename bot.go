@@ -1,8 +1,8 @@
-package bot
+package disgo
 
 import "encoding/json"
 
-type User struct {
+type BotUser struct {
 	Id            string `json:"id"`
 	Username      string `json:"username"`
 	Discriminator string `json:"discriminator"`
@@ -18,8 +18,8 @@ type User struct {
 	IsReady       bool
 }
 
-func Unmarshal(payload interface{}) *User {
-	bot := &User{}
+func Unmarshal(payload interface{}) *BotUser {
+	bot := &BotUser{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, bot)
 	return bot

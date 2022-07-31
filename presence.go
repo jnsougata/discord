@@ -1,4 +1,4 @@
-package main
+package disgo
 
 type Presence struct {
 	Since    int64    `json:"since"`

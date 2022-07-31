@@ -1,4 +1,4 @@
-package main
+package disgo
 
 const (
 	OnReady             = "READY"

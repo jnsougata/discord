@@ -1,8 +1,4 @@
-package main
-
-import (
-	"github.com/jnsougata/disgo/bot"
-)
+package disgo
 
 func New(client Client) *connection {
 	return &connection{
@@ -36,22 +32,22 @@ func (conn *connection) OnSocketReceive(handler func(payload map[string]interfac
 	conn.Sock.AddHandler(OnSocketReceive, handler)
 }
 
-func (conn *connection) OnMessage(handler func(bot bot.User, message Message)) {
+func (conn *connection) OnMessage(handler func(bot BotUser, message Message)) {
 	conn.Sock.AddHandler(OnMessageCreate, handler)
 }
 
-func (conn *connection) OnReady(handler func(bot bot.User)) {
+func (conn *connection) OnReady(handler func(bot BotUser)) {
 	conn.Sock.AddHandler(OnReady, handler)
 }
 
-func (conn *connection) OnInteraction(handler func(bot bot.User, ctx *Context)) {
+func (conn *connection) OnInteraction(handler func(bot BotUser, ctx *Context)) {
 	conn.Sock.AddHandler(OnInteractionCreate, handler)
 }
 
-func (conn *connection) OnGuildJoin(handler func(bot bot.User, guild Guild)) {
+func (conn *connection) OnGuildJoin(handler func(bot BotUser, guild Guild)) {
 	conn.Sock.AddHandler(OnGuildCreate, handler)
 }
 
-func (conn *connection) OnGuildLeave(handler func(bot bot.User, guild Guild)) {
+func (conn *connection) OnGuildLeave(handler func(bot BotUser, guild Guild)) {
 	conn.Sock.AddHandler(OnGuildDelete, handler)
 }

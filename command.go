@@ -1,8 +1,7 @@
-package main
+package disgo
 
 import (
 	"fmt"
-	"github.com/jnsougata/disgo/bot"
 )
 
 type CommandOption struct {
@@ -28,12 +27,12 @@ type ApplicationCommand struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
-	Handler           func(bot bot.User, ctx Context, options ...SlashCommandOption)
+	Handler           func(bot BotUser, ctx Context, options ...SlashCommandOption)
 }
 
 func (cmd *ApplicationCommand) Marshal() (
 	map[string]interface{},
-	func(bot bot.User, ctx Context, options ...SlashCommandOption),
+	func(bot BotUser, ctx Context, options ...SlashCommandOption),
 	int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {

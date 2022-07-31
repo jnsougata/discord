@@ -1,4 +1,4 @@
-package main
+package disgo
 
 import (
 	"crypto/rand"

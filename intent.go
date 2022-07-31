@@ -1,4 +1,4 @@
-package main
+package disgo
 
 const (
 	GuildsIntent                = 1 << 0

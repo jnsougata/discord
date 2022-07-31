@@ -1,10 +1,9 @@
-package main
+package disgo
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/jnsougata/disgo/bot"
 	"io"
 	"log"
 	"net/http"
@@ -29,7 +28,7 @@ type runtime struct {
 	}
 }
 
-var b *bot.User
+var b *BotUser
 var latency int64
 var beatSent int64
 var isready = false
@@ -144,12 +143,12 @@ func (sock *Socket) Run(token string) {
 			for _, cmd := range queue {
 				go registerCommand(cmd, token, r.Application.Id)
 			}
-			b = bot.Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
+			b = Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
 			b.Latency = latency
 			isready = true
 			b.IsReady = true
 			if _, ok := eventHooks[OnReady]; ok {
-				go eventHooks[OnReady].(func(bot bot.User))(*b)
+				go eventHooks[OnReady].(func(bot BotUser))(*b)
 			}
 		}
 		if wsmsg.Op == 10 {
@@ -208,20 +207,20 @@ func eventHandler(event string, data map[string]interface{}) {
 
 	case OnMessageCreate:
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot bot.User, message Message))
+			eventHook := eventHooks[event].(func(bot BotUser, message Message))
 			go eventHook(*b, *DataToMessage(data))
 		}
 
 	case OnGuildCreate:
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot bot.User, guild Guild))
+			eventHook := eventHooks[event].(func(bot BotUser, guild Guild))
 			go eventHook(*b, *DataToGuild(data))
 		}
 
 	case OnInteractionCreate:
 		ctx := UnmarshalContext(data)
 		if _, ok := eventHooks[event]; ok {
-			eventHook := eventHooks[event].(func(bot bot.User, ctx Context))
+			eventHook := eventHooks[event].(func(bot BotUser, ctx Context))
 			go eventHook(*b, *ctx)
 		}
 		switch ctx.Type {
@@ -230,7 +229,7 @@ func eventHandler(event string, data map[string]interface{}) {
 		case 2:
 
 			if _, ok := commandHooks[ctx.Data.Id]; ok {
-				hook := commandHooks[ctx.Data.Id].(func(bot bot.User, ctx Context, ops ...SlashCommandOption))
+				hook := commandHooks[ctx.Data.Id].(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
 				go hook(*b, *ctx, ctx.Data.Options...)
 			}
 		case 3:
@@ -243,19 +242,19 @@ func eventHandler(event string, data map[string]interface{}) {
 			case 2:
 				cb, ok := factory[ctx.ComponentData.CustomId]
 				if ok {
-					callback := cb.(func(b bot.User, ctx Context))
+					callback := cb.(func(b BotUser, ctx Context))
 					go callback(*b, *ctx)
 				}
 			case 3:
 				cb, ok := factory[ctx.ComponentData.CustomId]
 				if ok {
-					callback := cb.(func(b bot.User, ctx Context, values ...string))
+					callback := cb.(func(b BotUser, ctx Context, values ...string))
 					go callback(*b, *ctx, ctx.ComponentData.Values...)
 				}
 			}
 			tmp, ok := TimeoutTasks[ctx.ComponentData.CustomId]
 			if ok {
-				onTimeoutHandler := tmp[1].(func(b bot.User, ctx Context))
+				onTimeoutHandler := tmp[1].(func(b BotUser, ctx Context))
 				duration := tmp[0].(float64)
 				delete(TimeoutTasks, ctx.ComponentData.CustomId)
 				go scheduleTimeoutTask(duration, *b, *ctx, onTimeoutHandler)
@@ -265,7 +264,7 @@ func eventHandler(event string, data map[string]interface{}) {
 		case 5:
 			callback, ok := CallbackTasks[ctx.ComponentData.CustomId]
 			if ok {
-				go callback.(func(b bot.User, ctx *Context))(*b, ctx)
+				go callback.(func(b BotUser, ctx *Context))(*b, ctx)
 				delete(CallbackTasks, ctx.ComponentData.CustomId)
 			}
 		default:
@@ -275,8 +274,8 @@ func eventHandler(event string, data map[string]interface{}) {
 	}
 }
 
-func scheduleTimeoutTask(timeout float64, user bot.User, ctx Context,
-	handler func(bot bot.User, ctx Context)) {
+func scheduleTimeoutTask(timeout float64, user BotUser, ctx Context,
+	handler func(bot BotUser, ctx Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
 	handler(user, ctx)
 }
