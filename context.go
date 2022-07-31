@@ -120,7 +120,7 @@ func UnmarshalContext(payload interface{}) *Context {
 	return c
 }
 
-func (c *Context) SendResponse(resp Response) {
+func (c *Context) Send(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := MultipartReq(
 		"POST", path, map[string]interface{}{"type": 4, "data": resp.Marshal()}, "", resp.Files)
@@ -152,17 +152,24 @@ func (c *Context) SendFollowup(resp Response) {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
 	r := MultipartReq("POST", path, resp.Marshal(), "", resp.Files)
 	go r.Request()
+	// TODO: handle followup
 }
 
-func (c *Context) EditComponentMessage(resp Response) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	body := map[string]interface{}{"type": 7, "data": resp.Marshal()}
-	r := MultipartReq("POST", path, body, "", resp.Files)
-	go r.Request()
+func (c *Context) Edit(resp Response) {
+	if c.Type == 2 {
+		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+		r := MultipartReq("PATCH", path, resp.Marshal(), "", resp.Files)
+		go r.Request()
+	} else {
+		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
+		body := map[string]interface{}{"type": 7, "data": resp.Marshal()}
+		r := MultipartReq("POST", path, body, "", resp.Files)
+		go r.Request()
+	}
 }
 
-func (c *Context) EditOriginalMessage(resp Response) {
-	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := MultipartReq("PATCH", path, resp.Marshal(), "", resp.Files)
+func (c *Context) Delete() {
+	path := fmt.Sprintf("/interactions/%s/%s/messages/@original", c.Id, c.Token)
+	r := MinimalReq("DELETE", path, nil, "")
 	go r.Request()
 }
