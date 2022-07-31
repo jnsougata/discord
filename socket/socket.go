@@ -40,8 +40,8 @@ type runtime struct {
 var b *bot.User
 var latency int64
 var beatSent int64
+var isready = false
 var interval float64
-var execLocked = true
 var beatReceived int64
 var queue []command.ApplicationCommand
 var eventHooks = map[string]interface{}{}
@@ -92,7 +92,7 @@ func (sock *Socket) identify(conn *websocket.Conn, Token string, intent int) {
 		},
 		Presence: sock.Presence.Marshal(),
 	}
-	if sock.Presence.ClientStatus == "mobile" {
+	if sock.Presence.OnMobile {
 		d.Properties.Browser = "Discord iOS"
 	}
 	payload := map[string]interface{}{"op": 2, "d": d}
@@ -154,7 +154,8 @@ func (sock *Socket) Run(token string) {
 			}
 			b = bot.Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
 			b.Latency = latency
-			execLocked = false
+			isready = true
+			b.IsReady = true
 			if _, ok := eventHooks[consts.OnReady]; ok {
 				go eventHooks[consts.OnReady].(func(bot bot.User))(*b)
 			}
@@ -199,16 +200,16 @@ func (sock *Socket) Run(token string) {
 			}
 		}
 		if wsmsg.Event == "GUILD_MEMBERS_CHUNK" {
-			execLocked = true
+			isready = true
 			id := wsmsg.Data["guild_id"].(string)
 			guilds[id].UnmarshalMembers(wsmsg.Data["members"].([]interface{}))
-			execLocked = false
+			isready = false
 		}
 	}
 }
 
 func eventHandler(event string, data map[string]interface{}) {
-	if execLocked == true {
+	if isready == true {
 		return
 	}
 	switch event {

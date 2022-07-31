@@ -15,6 +15,7 @@ type User struct {
 	Flags         int    `json:"flags"`
 	PublicFlags   int    `json:"public_flags"`
 	Latency       int64  `json:"latency"`
+	IsReady       bool
 }
 
 func Unmarshal(payload interface{}) *User {

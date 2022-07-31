@@ -1,11 +1,11 @@
 package presence
 
 type Presence struct {
-	Since        int64    `json:"since"`
-	Status       string   `json:"status"` // "online" or "idle" or "dnd" or "offline" or "invisible"
-	AFK          bool     `json:"afk"`
-	Activity     Activity `json:"activities"`    // base activity object
-	ClientStatus string   `json:"client_status"` // "mobile" or "web" or "desktop"
+	Since    int64    `json:"since"`
+	Status   string   `json:"status"` // "online" or "idle" or "dnd" or "offline" or "invisible"
+	AFK      bool     `json:"afk"`
+	Activity Activity `json:"activities"` // base activity object
+	OnMobile bool
 }
 
 func (p *Presence) Marshal() map[string]interface{} {
@@ -20,9 +20,6 @@ func (p *Presence) Marshal() map[string]interface{} {
 		presence["afk"] = true
 	}
 	presence["activities"] = []Activity{p.Activity}
-	if p.ClientStatus != "" {
-		presence["client_status"] = p.ClientStatus
-	}
 	return presence
 }
 
