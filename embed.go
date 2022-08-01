@@ -2,39 +2,39 @@ package disgo
 
 import "encoding/json"
 
-type Image struct {
+type EmbedImage struct {
 	Url    string `json:"url"`
 	Height int    `json:"height"`
 	Width  int    `json:"width"`
 }
 
-type Field struct {
+type EmbedField struct {
 	Name   string `json:"name"`
 	Value  string `json:"value"`
 	Inline bool   `json:"inline"`
 }
 
-type Footer struct {
+type EmbedFooter struct {
 	Text    string `json:"text"`
 	IconUrl string `json:"icon_url"`
 }
 
-type Author struct {
+type EmbedAuthor struct {
 	Name    string `json:"name"`
 	IconUrl string `json:"icon_url"`
 }
 
 type Embed struct {
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Url         string  `json:"url"`
-	Timestamp   string  `json:"timestamp"`
-	Color       int     `json:"color"`
-	Footer      Footer  `json:"footer"`
-	Author      Author  `json:"author"`
-	Image       Image   `json:"image"`
-	Thumbnail   Image   `json:"thumbnail"`
-	Fields      []Field `json:"fields"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	Url         string       `json:"url"`
+	Timestamp   string       `json:"timestamp"`
+	Color       int          `json:"color"`
+	Footer      EmbedFooter  `json:"footer"`
+	Author      EmbedAuthor  `json:"author"`
+	Image       EmbedImage   `json:"image"`
+	Thumbnail   EmbedImage   `json:"thumbnail"`
+	Fields      []EmbedField `json:"fields"`
 }
 
 func (e *Embed) Marshal() map[string]interface{} {
@@ -89,10 +89,10 @@ func (e *Embed) Marshal() map[string]interface{} {
 	if len(e.Fields) > 25 {
 		e.Fields = e.Fields[:25]
 	}
-	embed["fields"] = []Field{}
+	embed["fields"] = []EmbedField{}
 	for _, field := range e.Fields {
 		if len(field.Name) <= 256 && len(field.Value) <= 1024 {
-			embed["fields"] = append(embed["fields"].([]Field), field)
+			embed["fields"] = append(embed["fields"].([]EmbedField), field)
 		}
 	}
 	return embed

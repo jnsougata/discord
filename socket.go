@@ -47,32 +47,22 @@ func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {
 	}
 }
 
-func (sock *Socket) identify(conn *websocket.Conn, Token string, intent int) {
-	type properties struct {
-		Os      string `json:"os"`
-		Browser string `json:"browser"`
-		Device  string `json:"device"`
+func (sock *Socket) identify(conn *websocket.Conn, token string, intent int) {
+
+	d := map[string]interface{}{
+		"token":   token,
+		"intents": intent,
 	}
-	type data struct {
-		Token      string                 `json:"token"`
-		Intents    int                    `json:"intents"`
-		Properties properties             `json:"properties"`
-		Presence   map[string]interface{} `json:"presence"`
-	}
-	d := data{
-		Token:   Token,
-		Intents: intent,
-		Properties: properties{
-			Os:      "linux",
-			Browser: "disgo",
-			Device:  "disgo",
-		},
+	d["properties"] = map[string]string{
+		"os":      "linux",
+		"browser": "disgo",
+		"device":  "disgo",
 	}
 	if sock.Presence.Activity.Name != "" {
-		d.Presence = sock.Presence.Marshal()
+		d["presence"] = sock.Presence.Marshal()
 	}
 	if sock.Presence.OnMobile {
-		d.Properties.Browser = "Discord iOS"
+		d["properties"].(map[string]string)["browser"] = "Discord iOS"
 	}
 	payload := map[string]interface{}{"op": 2, "d": d}
 	_ = conn.WriteJSON(payload)
