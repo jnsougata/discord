@@ -32,11 +32,14 @@ type Socket struct {
 }
 
 func (sock *Socket) getGateway() string {
-	data, _ := http.Get("https://discord.com/api/gateway")
+	data, err := http.Get("https://discord.com/api/gateway")
+	if err != nil {
+		panic(err)
+	}
 	var payload map[string]string
 	bytes, _ := io.ReadAll(data.Body)
 	_ = json.Unmarshal(bytes, &payload)
-	return fmt.Sprintf("%s?v=10&encoding=json", payload["url"])
+	return fmt.Sprintf("%s?v=%s&encoding=json", payload["url"], "10")
 }
 
 func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {

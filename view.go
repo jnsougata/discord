@@ -14,7 +14,7 @@ type Button struct {
 	URL      string // only for style 5 (link)
 	Disabled bool
 	CustomId string // filled internally
-	OnClick  func(bot BotUser, ctx Context)
+	OnClick  func(bot BotUser, comp Context)
 }
 
 func (b *Button) Marshal() map[string]interface{} {
@@ -85,7 +85,7 @@ type SelectMenu struct {
 	MinValues   int            // default: 0
 	MaxValues   int            // default: 1
 	Disabled    bool
-	OnSelection func(bot BotUser, ctx Context, values ...string)
+	OnSelection func(bot BotUser, comp Context, values ...string)
 }
 
 func (s *SelectMenu) ToComponent() map[string]interface{} {
