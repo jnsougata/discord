@@ -94,7 +94,7 @@ func (sock *Socket) registerCommand(com ApplicationCommand, token string, applic
 	}
 	r := MinimalReq("POST", route, data, token)
 	d := map[string]interface{}{}
-	body, _ := io.ReadAll(r.Request().Body)
+	body, _ := io.ReadAll(r.Fire().Body)
 	_ = json.Unmarshal(body, &d)
 	_, ok := d["id"]
 	if ok {

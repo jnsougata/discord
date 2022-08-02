@@ -3,6 +3,7 @@ package disgo
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 )
 
 type Component struct {
@@ -94,6 +95,37 @@ func (resp *Response) Marshal() map[string]interface{} {
 	return body
 }
 
+type Followup struct {
+	Id            string
+	Content       string
+	Embeds        []Embed
+	ChannelId     string
+	Flags         int
+	token         string
+	applicationId string
+}
+
+func (f *Followup) Delete() {
+	if f.Flags|1<<6 == 1<<6|1<<2 || f.Flags == 0 {
+		path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
+		r := MinimalReq("DELETE", path, nil, "")
+		go r.Fire()
+	}
+}
+
+func (f *Followup) Edit(resp Response) {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
+	body := resp.Marshal()
+	body["wait"] = true
+	r := MultipartReq("PATCH", path, body, "", resp.Files...)
+	bs, _ := io.ReadAll(r.Fire().Body)
+	var msg Message
+	_ = json.Unmarshal(bs, &msg)
+	f.Content = msg.Content
+	f.Embeds = msg.Embeds
+	f.Flags = msg.Flags
+}
+
 type Context struct {
 	Id             string                 `json:"id"`
 	ApplicationId  string                 `json:"application_id"`
@@ -123,8 +155,8 @@ func UnmarshalContext(payload interface{}) *Context {
 func (c *Context) Send(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := MultipartReq(
-		"POST", path, map[string]interface{}{"type": 4, "data": resp.Marshal()}, "", resp.Files)
-	go r.Request()
+		"POST", path, map[string]interface{}{"type": 4, "data": resp.Marshal()}, "", resp.Files...)
+	go r.Fire()
 }
 
 func (c *Context) Defer(ephemeral bool) {
@@ -139,37 +171,46 @@ func (c *Context) Defer(ephemeral bool) {
 	}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := MinimalReq("POST", path, body, "")
-	go r.Request()
+	go r.Fire()
 }
 
 func (c *Context) SendModal(modal Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := MinimalReq("POST", path, modal.Marshal(), "")
-	go r.Request()
+	go r.Fire()
 }
 
-func (c *Context) SendFollowup(resp Response) {
+func (c *Context) SendFollowup(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	r := MultipartReq("POST", path, resp.Marshal(), "", resp.Files)
-	go r.Request()
-	// TODO: handle followup
+	r := MultipartReq("POST", path, resp.Marshal(), "", resp.Files...)
+	bs, _ := io.ReadAll(r.Fire().Body)
+	var message Message
+	_ = json.Unmarshal(bs, &message)
+	return Followup{
+		token:         c.Token,
+		applicationId: c.ApplicationId,
+		Content:       message.Content,
+		Embeds:        message.Embeds,
+		Flags:         message.Flags,
+		Id:            message.Id,
+	}
 }
 
 func (c *Context) Edit(resp Response) {
 	if c.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-		r := MultipartReq("PATCH", path, resp.Marshal(), "", resp.Files)
-		go r.Request()
+		r := MultipartReq("PATCH", path, resp.Marshal(), "", resp.Files...)
+		go r.Fire()
 	} else {
 		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 		body := map[string]interface{}{"type": 7, "data": resp.Marshal()}
-		r := MultipartReq("POST", path, body, "", resp.Files)
-		go r.Request()
+		r := MultipartReq("POST", path, body, "", resp.Files...)
+		go r.Fire()
 	}
 }
 
 func (c *Context) Delete() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
 	r := MinimalReq("DELETE", path, nil, "")
-	go r.Request()
+	go r.Fire()
 }

@@ -19,7 +19,7 @@ type Router struct {
 	Method string
 }
 
-func (obj *Router) Request() *http.Response {
+func (obj *Router) Fire() *http.Response {
 	body, boundary := MultiPartWriter(obj.Data, obj.Files)
 	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
 	r.Header.Set(`Content-Type`, fmt.Sprintf(`multipart/form-data; boundary=%s`, boundary))
@@ -38,7 +38,7 @@ func (obj *Router) Request() *http.Response {
 	return resp
 }
 
-func MultipartReq(method string, path string, data map[string]interface{}, token string, files []File) *Router {
+func MultipartReq(method string, path string, data map[string]interface{}, token string, files ...File) *Router {
 	return &Router{Token: token, Path: path, Data: data, Method: method, Files: files}
 }
 
@@ -49,7 +49,7 @@ type MinimalRouter struct {
 	Data   map[string]interface{}
 }
 
-func (obj *MinimalRouter) Request() *http.Response {
+func (obj *MinimalRouter) Fire() *http.Response {
 	body, _ := json.Marshal(obj.Data)
 	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
 	r.Header.Set(`Content-Type`, `application/json`)
