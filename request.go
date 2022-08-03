@@ -11,7 +11,7 @@ import (
 
 const BASE = "https://discord.com/api/v10"
 
-type Router struct {
+type router struct {
 	Token  string
 	Path   string
 	Data   map[string]interface{}
@@ -19,11 +19,13 @@ type Router struct {
 	Method string
 }
 
-func (obj *Router) Fire() *http.Response {
+func (obj *router) fire() *http.Response {
 	body, boundary := MultiPartWriter(obj.Data, obj.Files)
 	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
 	r.Header.Set(`Content-Type`, fmt.Sprintf(`multipart/form-data; boundary=%s`, boundary))
-	r.Header.Set(`Authorization`, fmt.Sprintf(`Bot %s`, obj.Token))
+	if obj.Token != "" {
+		r.Header.Set(`Authorization`, fmt.Sprintf(`Bot %s`, obj.Token))
+	}
 	client := &http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
@@ -38,22 +40,31 @@ func (obj *Router) Fire() *http.Response {
 	return resp
 }
 
-func MultipartReq(method string, path string, data map[string]interface{}, token string, files ...File) *Router {
-	return &Router{Token: token, Path: path, Data: data, Method: method, Files: files}
+func multipartReq(method string, path string, data map[string]interface{}, token string, files ...File) *router {
+	return &router{Token: token, Path: path, Data: data, Method: method, Files: files}
 }
 
-type MinimalRouter struct {
+type minimalRouter struct {
 	Method string
 	Token  string
 	Path   string
 	Data   map[string]interface{}
 }
 
-func (obj *MinimalRouter) Fire() *http.Response {
+func (obj *minimalRouter) fire() *http.Response {
 	body, _ := json.Marshal(obj.Data)
-	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
+	reader := io.NopCloser(bytes.NewBuffer(body))
+	if obj.Method == "DELETE" {
+		reader = nil
+	}
+	if obj.Method == "GET" {
+		reader = nil
+	}
+	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, reader)
 	r.Header.Set(`Content-Type`, `application/json`)
-	r.Header.Set(`Authorization`, fmt.Sprintf(`Bot %s`, obj.Token))
+	if obj.Token != "" {
+		r.Header.Set(`Authorization`, fmt.Sprintf(`Bot %s`, obj.Token))
+	}
 	client := &http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
@@ -62,6 +73,6 @@ func (obj *MinimalRouter) Fire() *http.Response {
 	return resp
 }
 
-func MinimalReq(method string, path string, data map[string]interface{}, token string) *MinimalRouter {
-	return &MinimalRouter{Method: method, Path: path, Data: data, Token: token}
+func minimalReq(method string, path string, data map[string]interface{}, token string) *minimalRouter {
+	return &minimalRouter{Method: method, Path: path, Data: data, Token: token}
 }

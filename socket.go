@@ -92,9 +92,9 @@ func (sock *Socket) registerCommand(com ApplicationCommand, token string, applic
 	} else {
 		route = fmt.Sprintf("/applications/%s/commands", applicationId)
 	}
-	r := MinimalReq("POST", route, data, token)
+	r := minimalReq("POST", route, data, token)
 	d := map[string]interface{}{}
-	body, _ := io.ReadAll(r.Fire().Body)
+	body, _ := io.ReadAll(r.fire().Body)
 	_ = json.Unmarshal(body, &d)
 	_, ok := d["id"]
 	if ok {

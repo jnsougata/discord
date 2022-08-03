@@ -108,41 +108,54 @@ type Followup struct {
 func (f *Followup) Delete() {
 	if f.Flags|1<<6 == 1<<6|1<<2 || f.Flags == 0 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
-		r := MinimalReq("DELETE", path, nil, "")
-		go r.Fire()
+		r := minimalReq("DELETE", path, nil, "")
+		go r.fire()
 	}
 }
 
-func (f *Followup) Edit(resp Response) {
+func (f *Followup) Edit(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
 	body := resp.Marshal()
 	body["wait"] = true
-	r := MultipartReq("PATCH", path, body, "", resp.Files...)
-	bs, _ := io.ReadAll(r.Fire().Body)
-	var msg Message
-	_ = json.Unmarshal(bs, &msg)
-	f.Content = msg.Content
-	f.Embeds = msg.Embeds
-	f.Flags = msg.Flags
+	r := multipartReq("PATCH", path, body, "", resp.Files...)
+	fl := make(chan Followup, 1)
+	go func() {
+		bs, _ := io.ReadAll(r.fire().Body)
+		var msg Message
+		_ = json.Unmarshal(bs, &msg)
+		fl <- Followup{
+			Id:            msg.Id,
+			Content:       msg.Content,
+			Embeds:        msg.Embeds,
+			ChannelId:     msg.ChannelId,
+			Flags:         msg.Flags,
+			token:         f.token,
+			applicationId: f.applicationId,
+		}
+	}()
+	val, ok := <-fl
+	if ok {
+		return val
+	}
+	return Followup{}
 }
 
 type Context struct {
-	Id             string                 `json:"id"`
-	ApplicationId  string                 `json:"application_id"`
-	Type           int                    `json:"type"`
-	Data           InteractionData        `json:"data"`
-	GuildId        string                 `json:"guild_id"`
-	ChannelId      string                 `json:"channel_id"`
-	Member         Member                 `json:"member"`
-	User           User                   `json:"user"`
-	Token          string                 `json:"token"`
-	Version        int                    `json:"version"`
-	Message        map[string]interface{} `json:"message"`
-	AppPermissions string                 `json:"app_permissions"`
-	Locale         string                 `json:"locale"`
-	GuildLocale    string                 `json:"guild_locale"`
-	ComponentData  ComponentData          `json:"x_component"`
-	CommandData    []SlashCommandOption   `json:"x_command"`
+	Id             string               `json:"id"`
+	ApplicationId  string               `json:"application_id"`
+	Type           int                  `json:"type"`
+	Data           InteractionData      `json:"data"`
+	GuildId        string               `json:"guild_id"`
+	ChannelId      string               `json:"channel_id"`
+	Member         Member               `json:"member"`
+	User           User                 `json:"user"`
+	Token          string               `json:"token"`
+	Version        int                  `json:"version"`
+	AppPermissions string               `json:"app_permissions"`
+	Locale         string               `json:"locale"`
+	GuildLocale    string               `json:"guild_locale"`
+	ComponentData  ComponentData        `json:"x_component"`
+	CommandData    []SlashCommandOption `json:"x_command"`
 }
 
 func UnmarshalContext(payload interface{}) *Context {
@@ -152,11 +165,20 @@ func UnmarshalContext(payload interface{}) *Context {
 	return c
 }
 
+func (c *Context) OriginalResponse() Message {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := minimalReq("GET", path, nil, "")
+	bs, _ := io.ReadAll(r.fire().Body)
+	var m Message
+	_ = json.Unmarshal(bs, &m)
+	return m
+}
+
 func (c *Context) Send(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := MultipartReq(
+	r := multipartReq(
 		"POST", path, map[string]interface{}{"type": 4, "data": resp.Marshal()}, "", resp.Files...)
-	go r.Fire()
+	go r.fire()
 }
 
 func (c *Context) Defer(ephemeral bool) {
@@ -170,47 +192,56 @@ func (c *Context) Defer(ephemeral bool) {
 		body["type"] = 6
 	}
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := MinimalReq("POST", path, body, "")
-	go r.Fire()
+	r := minimalReq("POST", path, body, "")
+	go r.fire()
 }
 
 func (c *Context) SendModal(modal Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := MinimalReq("POST", path, modal.Marshal(), "")
-	go r.Fire()
+	r := minimalReq("POST", path, modal.Marshal(), "")
+	go r.fire()
 }
 
 func (c *Context) SendFollowup(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	r := MultipartReq("POST", path, resp.Marshal(), "", resp.Files...)
-	bs, _ := io.ReadAll(r.Fire().Body)
-	var message Message
-	_ = json.Unmarshal(bs, &message)
-	return Followup{
-		token:         c.Token,
-		applicationId: c.ApplicationId,
-		Content:       message.Content,
-		Embeds:        message.Embeds,
-		Flags:         message.Flags,
-		Id:            message.Id,
+	r := multipartReq("POST", path, resp.Marshal(), "", resp.Files...)
+	fl := make(chan Followup, 1)
+	go func() {
+		bs, _ := io.ReadAll(r.fire().Body)
+		var msg Message
+		_ = json.Unmarshal(bs, &msg)
+		fl <- Followup{
+			Id:            msg.Id,
+			Content:       msg.Content,
+			Embeds:        msg.Embeds,
+			ChannelId:     c.ChannelId,
+			Flags:         msg.Flags,
+			token:         c.Token,
+			applicationId: c.ApplicationId,
+		}
+	}()
+	val, ok := <-fl
+	if ok {
+		return val
 	}
+	return Followup{}
 }
 
 func (c *Context) Edit(resp Response) {
 	if c.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-		r := MultipartReq("PATCH", path, resp.Marshal(), "", resp.Files...)
-		go r.Fire()
+		r := multipartReq("PATCH", path, resp.Marshal(), "", resp.Files...)
+		go r.fire()
 	} else {
 		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 		body := map[string]interface{}{"type": 7, "data": resp.Marshal()}
-		r := MultipartReq("POST", path, body, "", resp.Files...)
-		go r.Fire()
+		r := multipartReq("POST", path, body, "", resp.Files...)
+		go r.fire()
 	}
 }
 
 func (c *Context) Delete() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := MinimalReq("DELETE", path, nil, "")
-	go r.Fire()
+	r := minimalReq("DELETE", path, nil, "")
+	go r.fire()
 }
