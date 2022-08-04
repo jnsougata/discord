@@ -1,8 +1,8 @@
 package disgo
 
 // Bot is a function that represents a connection to discord.
-func Bot(intent int, cache bool, presence Presence) *connection {
-	return &connection{sock: &Socket{Intent: intent, Memoize: cache, Presence: presence}}
+func Bot(intent Intent, cache bool, presence Presence) *connection {
+	return &connection{sock: &Socket{Intent: int(intent), Memoize: cache, Presence: presence}}
 }
 
 type connection struct {

@@ -24,40 +24,16 @@ const (
 	AutoModExecuteIntent        Intent = 1 << 18
 )
 
-type Intents struct {
-	Guilds                bool
-	GuildMembers          bool
-	GuildBans             bool
-	GuildEmojis           bool
-	GuildIntegrations     bool
-	GuildWebhooks         bool
-	GuildInvites          bool
-	GuildVoiceStates      bool
-	GuildPresences        bool
-	GuildMessages         bool
-	GuildMessageReactions bool
-	GuildMessageTyping    bool
-	DM                    bool
-	DMReactions           bool
-	DMTyping              bool
-	MessageContent        bool
-	GuildScheduleEvents   bool
-	AutoModConfig         bool
-	AutoModExecute        bool
-}
-
-func (i Intents) Build(intents ...Intent) int {
+func Intents(intents ...Intent) Intent {
 	base := 0
-	for _, intent := range intents {
-		base |= int(intent)
+	if len(intents) > 0 {
+		for _, intent := range intents {
+			base |= int(intent)
+		}
+	} else {
+		for i := 0; i < 19; i++ {
+			base |= 1 << i
+		}
 	}
-	return base
-}
-
-func (i Intents) All() int {
-	base := 0
-	for i := 0; i < 19; i++ {
-		base |= 1 << i
-	}
-	return base
+	return Intent(base)
 }
