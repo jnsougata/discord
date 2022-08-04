@@ -16,7 +16,7 @@ func escapeQuotes(s string) string {
 	return quoteEscaper.Replace(s)
 }
 
-func MultiPartWriter(data map[string]interface{}, files []File) ([]byte, string) {
+func multipartWriter(data map[string]interface{}, files []File) ([]byte, string) {
 	var buffer bytes.Buffer
 	writer := multipart.NewWriter(&buffer)
 	payload, _ := json.MarshalIndent(data, "", "  ")

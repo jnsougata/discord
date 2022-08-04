@@ -74,7 +74,7 @@ func (resp *Response) Marshal() map[string]interface{} {
 		body["flags"] = flag
 	}
 	if len(resp.View.ActionRows) > 0 {
-		body["components"] = resp.View.ToComponent()
+		body["components"] = resp.View.marshal()
 	}
 	if CheckTrueFile(resp.File) {
 		resp.Files = append([]File{resp.File}, resp.Files...)
@@ -198,7 +198,7 @@ func (c *Context) Defer(ephemeral bool) {
 
 func (c *Context) SendModal(modal Modal) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := minimalReq("POST", path, modal.Marshal(), "")
+	r := minimalReq("POST", path, modal.marshal(), "")
 	go r.fire()
 }
 

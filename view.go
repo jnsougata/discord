@@ -13,18 +13,18 @@ type Button struct {
 	Emoji    PartialEmoji
 	URL      string // only for style 5 (link)
 	Disabled bool
-	CustomId string // filled internally
+	customId string // filled internally
 	OnClick  func(bot BotUser, comp Context)
 }
 
-func (b *Button) Marshal() map[string]interface{} {
-	b.CustomId = AssignId("")
+func (b *Button) marshal() map[string]interface{} {
+	b.customId = assignId("")
 	if b.OnClick != nil {
-		callbackTasks[b.CustomId] = b.OnClick
+		callbackTasks[b.customId] = b.OnClick
 	}
 	btn := map[string]interface{}{
 		"type":      2,
-		"custom_id": b.CustomId,
+		"custom_id": b.customId,
 	}
 	if b.Style != 0 {
 		btn["style"] = b.Style
@@ -56,7 +56,7 @@ type SelectOption struct {
 	Default     bool // default: false
 }
 
-func (so *SelectOption) ToComponent() map[string]interface{} {
+func (so *SelectOption) marshal() map[string]interface{} {
 	op := map[string]interface{}{}
 	if so.Label != "" && len(so.Label) <= 100 {
 		op["label"] = so.Label
@@ -79,7 +79,7 @@ func (so *SelectOption) ToComponent() map[string]interface{} {
 }
 
 type SelectMenu struct {
-	CustomId    string         // filled internally
+	customId    string
 	Options     []SelectOption // max 25 options
 	Placeholder string         // max 100 characters
 	MinValues   int            // default: 0
@@ -88,12 +88,12 @@ type SelectMenu struct {
 	OnSelection func(bot BotUser, comp Context, values ...string)
 }
 
-func (s *SelectMenu) ToComponent() map[string]interface{} {
-	s.CustomId = AssignId("")
+func (s *SelectMenu) marshal() map[string]interface{} {
+	s.customId = assignId("")
 	if s.OnSelection != nil {
-		callbackTasks[s.CustomId] = s.OnSelection
+		callbackTasks[s.customId] = s.OnSelection
 	}
-	menu := map[string]interface{}{"type": 3, "custom_id": s.CustomId}
+	menu := map[string]interface{}{"type": 3, "custom_id": s.customId}
 	if s.Placeholder != "" {
 		menu["placeholder"] = s.Placeholder
 	}
@@ -119,7 +119,7 @@ func (s *SelectMenu) ToComponent() map[string]interface{} {
 	}
 	menu["options"] = []map[string]interface{}{}
 	for _, option := range s.Options {
-		menu["options"] = append(menu["options"].([]map[string]interface{}), option.ToComponent())
+		menu["options"] = append(menu["options"].([]map[string]interface{}), option.marshal())
 	}
 	return menu
 }
@@ -155,7 +155,7 @@ func (v *View) AddSelectMenu(menu SelectMenu) {
 	}
 }
 
-func (v *View) ToComponent() []interface{} {
+func (v *View) marshal() []interface{} {
 	const timeout = 14.98 * 60
 	if v.Timeout == 0 || v.Timeout > timeout {
 		v.Timeout = timeout
@@ -173,28 +173,28 @@ func (v *View) ToComponent() []interface{} {
 		}
 		for _, button := range row.Buttons {
 			if num < 5 {
-				undo[button.CustomId] = true
+				undo[button.customId] = true
 				if v.OnTimeout != nil {
-					timeoutTasks[button.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					timeoutTasks[button.customId] = []interface{}{v.Timeout, v.OnTimeout}
 				}
-				tmp["components"] = append(tmp["components"].([]interface{}), button.Marshal())
+				tmp["components"] = append(tmp["components"].([]interface{}), button.marshal())
 				num++
 			}
 		}
 		if len(row.SelectMenu.Options) > 0 {
 			if num == 0 {
-				undo[row.SelectMenu.CustomId] = true
+				undo[row.SelectMenu.customId] = true
 				if v.OnTimeout != nil {
-					timeoutTasks[row.SelectMenu.CustomId] = []interface{}{v.Timeout, v.OnTimeout}
+					timeoutTasks[row.SelectMenu.customId] = []interface{}{v.Timeout, v.OnTimeout}
 				}
-				tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.ToComponent())
+				tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.marshal())
 			} else {
 				log.Println("Single ActionRow can contain either 1x SelectMenu or max 5x Buttons")
 			}
 		}
 		if len(undo) > 0 {
 			c = append(c, tmp)
-			go ScheduleDeletion(v.Timeout, callbackTasks, undo)
+			go scheduleDeletion(v.Timeout, callbackTasks, undo)
 		}
 	}
 	return c

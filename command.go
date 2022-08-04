@@ -19,6 +19,37 @@ type CommandOption struct {
 	Choices      []Choice        `json:"choices,omitempty"`       // for type 3 and 4 and 10 only
 }
 
+func (co *CommandOption) Marshal() map[string]interface{} {
+	body := map[string]interface{}{}
+	if co.Name == "" || co.Description == "" {
+		panic("Both command {name} or {description} must be set")
+	}
+	if len(co.Name) > 32 {
+		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", co.Name))
+	}
+	if len(co.Description) > 100 {
+		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", co.Name))
+	}
+	body["name"] = co.Name
+	body["description"] = co.Description
+	body["type"] = co.Type
+	switch co.Type {
+	case 3:
+		body["min_length"] = co.MinLength
+		body["max_length"] = co.MaxLength
+		body["choices"] = co.Choices
+	case 4:
+		body["min_value"] = co.MinValue
+		body["max_value"] = co.MaxValue
+	case 10:
+		body["min_value"] = co.MinValue
+		body["max_value"] = co.MaxValue
+
+	}
+
+	return body
+}
+
 // ApplicationCommand is a base type for all discord application commands
 type ApplicationCommand struct {
 	Type              int    // 1: slash command, 2: user command, 3: message command
@@ -28,10 +59,19 @@ type ApplicationCommand struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
-	Handler           func(bot BotUser, ctx Context, options ...SlashCommandOption)
+	handler           func(bot BotUser, ctx Context, options ...SlashCommandOption)
+	autocomplete      func(bot BotUser, ctx Context, choices ...Choice)
 }
 
-func (cmd *ApplicationCommand) Marshal() (
+func (cmd *ApplicationCommand) Handler(handler func(bot BotUser, ctx Context, options ...SlashCommandOption)) {
+	cmd.handler = handler
+}
+
+func (cmd *ApplicationCommand) AutoCompleteHandler(handler func(bot BotUser, ctx Context, choices ...Choice)) {
+	cmd.autocomplete = handler
+}
+
+func (cmd *ApplicationCommand) marshal() (
 	map[string]interface{},
 	func(bot BotUser, ctx Context, options ...SlashCommandOption),
 	int64) {
@@ -65,7 +105,7 @@ func (cmd *ApplicationCommand) Marshal() (
 	if cmd.Type == 1 {
 		body["options"] = cmd.Options
 	}
-	return body, cmd.Handler, cmd.GuildId
+	return body, cmd.handler, cmd.GuildId
 }
 
 type Choice struct {

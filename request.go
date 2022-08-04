@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-const BASE = "https://discord.com/api/v10"
+const root = "https://discord.com/api/v10"
 
 type router struct {
 	Token  string
@@ -20,8 +20,8 @@ type router struct {
 }
 
 func (obj *router) fire() *http.Response {
-	body, boundary := MultiPartWriter(obj.Data, obj.Files)
-	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
+	body, boundary := multipartWriter(obj.Data, obj.Files)
+	r, _ := http.NewRequest(obj.Method, root+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
 	r.Header.Set(`Content-Type`, fmt.Sprintf(`multipart/form-data; boundary=%s`, boundary))
 	if obj.Token != "" {
 		r.Header.Set(`Authorization`, fmt.Sprintf(`Bot %s`, obj.Token))
@@ -60,7 +60,7 @@ func (obj *minimalRouter) fire() *http.Response {
 	if obj.Method == "GET" {
 		reader = nil
 	}
-	r, _ := http.NewRequest(obj.Method, BASE+obj.Path, reader)
+	r, _ := http.NewRequest(obj.Method, root+obj.Path, reader)
 	r.Header.Set(`Content-Type`, `application/json`)
 	if obj.Token != "" {
 		r.Header.Set(`Authorization`, fmt.Sprintf(`Bot %s`, obj.Token))

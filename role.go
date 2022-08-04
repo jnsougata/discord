@@ -17,7 +17,7 @@ type Role struct {
 	GuildId      string `json:"guild_id"`
 }
 
-func DataToRole(payload interface{}) *Role {
+func unmarshalRole(payload interface{}) *Role {
 	role := &Role{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, role)

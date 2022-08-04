@@ -23,8 +23,7 @@ type PartialAttachment struct {
 	Description string `json:"description"`
 }
 
-// UnmarshalAttachment unmarshals a payload into an Attachment.
-func UnmarshalAttachment(payload interface{}) *Attachment {
+func unmarshalAttachment(payload interface{}) *Attachment {
 	attachment := &Attachment{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, attachment)

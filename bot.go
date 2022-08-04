@@ -21,7 +21,7 @@ type BotUser struct {
 	Guilds        map[string]*Guild
 }
 
-func Unmarshal(payload interface{}) *BotUser {
+func unmarshal(payload interface{}) *BotUser {
 	bot := &BotUser{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, bot)

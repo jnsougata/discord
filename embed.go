@@ -98,7 +98,7 @@ func (e *Embed) Marshal() map[string]interface{} {
 	return embed
 }
 
-func UnmarshalEmbed(payload interface{}) *Embed {
+func unmarshalEmbed(payload interface{}) *Embed {
 	embed := &Embed{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, embed)

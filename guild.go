@@ -59,37 +59,37 @@ type Guild struct {
 	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
 }
 
-func UnmarshalGuild(payload interface{}) *Guild {
+func unmarshalGuild(payload interface{}) *Guild {
 	guild := &Guild{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, guild)
 	return guild
 }
 
-func (guild *Guild) UnmarshalMembers(objs []interface{}) {
+func (guild *Guild) unmarshalMembers(objs []interface{}) {
 	var members = map[string]Member{}
 	for _, o := range objs {
-		uo := UnmarshalMember(o)
+		uo := unmarshalMember(o)
 		uo.GuildId = guild.Id
 		members[uo.User.Id] = *uo
 	}
 	guild.Members = members
 }
 
-func (guild *Guild) UnmarshalRoles(objs []interface{}) {
+func (guild *Guild) unmarshalRoles(objs []interface{}) {
 	var roles = map[string]Role{}
 	for _, o := range objs {
-		uo := DataToRole(o)
+		uo := unmarshalRole(o)
 		uo.GuildId = guild.Id
 		roles[uo.Id] = *uo
 	}
 	guild.Roles = roles
 }
 
-func (guild *Guild) UnmarshalChannels(objs []interface{}) {
+func (guild *Guild) unmarshalChannels(objs []interface{}) {
 	var chs = map[string]Channel{}
 	for _, o := range objs {
-		uo := UnmarshalChannel(o)
+		uo := unmarshalChannel(o)
 		chs[uo.Id] = *uo
 	}
 	guild.Channels = chs

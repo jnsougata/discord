@@ -11,8 +11,8 @@ type TextInput struct {
 	Required    bool   `json:"required"`    // default: false
 }
 
-func (inp *TextInput) ToComponent() map[string]interface{} {
-	inp.CustomId = AssignId(inp.CustomId)
+func (inp *TextInput) marshal() map[string]interface{} {
+	inp.CustomId = assignId(inp.CustomId)
 	field := map[string]interface{}{
 		"type":      4,
 		"custom_id": inp.CustomId,
@@ -55,14 +55,14 @@ type Modal struct {
 }
 
 func (m *Modal) OnSubmit(handler func(bot BotUser, ctx Context)) {
-	m.CustomId = AssignId(m.CustomId)
+	m.CustomId = assignId(m.CustomId)
 	callbackTasks[m.CustomId] = handler
 }
 
-func (m *Modal) Marshal() map[string]interface{} {
+func (m *Modal) marshal() map[string]interface{} {
 	modal := map[string]interface{}{}
 	modal["title"] = m.Title
-	modal["custom_id"] = AssignId(m.CustomId)
+	modal["custom_id"] = assignId(m.CustomId)
 	modal["components"] = []map[string]interface{}{}
 	if len(m.Fields) > 0 {
 		for _, field := range m.Fields {
@@ -70,7 +70,7 @@ func (m *Modal) Marshal() map[string]interface{} {
 				"type":       1,
 				"components": []map[string]interface{}{},
 			}
-			row["components"] = append(row["components"].([]map[string]interface{}), field.ToComponent())
+			row["components"] = append(row["components"].([]map[string]interface{}), field.marshal())
 			modal["components"] = append(modal["components"].([]map[string]interface{}), row)
 		}
 	}
@@ -80,7 +80,7 @@ func (m *Modal) Marshal() map[string]interface{} {
 				"type":       1,
 				"components": []map[string]interface{}{},
 			}
-			row["components"] = append(row["components"].([]map[string]interface{}), menu.ToComponent())
+			row["components"] = append(row["components"].([]map[string]interface{}), menu.marshal())
 			modal["components"] = append(modal["components"].([]map[string]interface{}), row)
 		}
 	}

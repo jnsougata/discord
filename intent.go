@@ -1,25 +1,27 @@
 package disgo
 
+type Intent int
+
 const (
-	GuildsIntent                = 1 << 0
-	GuildMembersIntent          = 1 << 1
-	GuildBansIntent             = 1 << 2
-	GuildEmojisIntent           = 1 << 3
-	GuildIntegrationsIntent     = 1 << 4
-	GuildWebhooksIntent         = 1 << 5
-	GuildInvitesIntent          = 1 << 6
-	GuildVoiceStatesIntent      = 1 << 7
-	GuildPresencesIntent        = 1 << 8
-	GuildMessagesIntent         = 1 << 9
-	GuildMessageReactionsIntent = 1 << 10
-	GuildMessageTypingIntent    = 1 << 11
-	DMIntent                    = 1 << 12
-	DMReactionsIntent           = 1 << 13
-	DMTypingIntent              = 1 << 14
-	MessageContentIntent        = 1 << 15
-	GuildScheduleEventsIntent   = 1 << 16
-	AutoModConfigIntent         = 1 << 17
-	AutoModExecuteIntent        = 1 << 18
+	GuildsIntent                Intent = 1 << 0
+	GuildMembersIntent          Intent = 1 << 1
+	GuildBansIntent             Intent = 1 << 2
+	GuildEmojisIntent           Intent = 1 << 3
+	GuildIntegrationsIntent     Intent = 1 << 4
+	GuildWebhooksIntent         Intent = 1 << 5
+	GuildInvitesIntent          Intent = 1 << 6
+	GuildVoiceStatesIntent      Intent = 1 << 7
+	GuildPresencesIntent        Intent = 1 << 8
+	GuildMessagesIntent         Intent = 1 << 9
+	GuildMessageReactionsIntent Intent = 1 << 10
+	GuildMessageTypingIntent    Intent = 1 << 11
+	DMIntent                    Intent = 1 << 12
+	DMReactionsIntent           Intent = 1 << 13
+	DMTypingIntent              Intent = 1 << 14
+	MessageContentIntent        Intent = 1 << 15
+	GuildScheduleEventsIntent   Intent = 1 << 16
+	AutoModConfigIntent         Intent = 1 << 17
+	AutoModExecuteIntent        Intent = 1 << 18
 )
 
 type Intents struct {
@@ -44,76 +46,18 @@ type Intents struct {
 	AutoModExecute        bool
 }
 
-func (i Intents) Build() int {
+func (i Intents) Build(intents ...Intent) int {
 	base := 0
-	if i.Guilds {
-		base |= GuildsIntent
-	}
-	if i.GuildMembers {
-		base |= GuildMembersIntent
-	}
-	if i.GuildBans {
-		base |= GuildBansIntent
-	}
-	if i.GuildEmojis {
-		base |= GuildEmojisIntent
-	}
-	if i.GuildIntegrations {
-		base |= GuildIntegrationsIntent
-	}
-	if i.GuildWebhooks {
-		base |= GuildWebhooksIntent
-	}
-	if i.GuildInvites {
-		base |= GuildInvitesIntent
-	}
-	if i.GuildVoiceStates {
-		base |= GuildVoiceStatesIntent
-	}
-	if i.GuildPresences {
-		base |= GuildPresencesIntent
-	}
-	if i.GuildMessages {
-		base |= GuildMessagesIntent
-	}
-	if i.GuildMessageReactions {
-		base |= GuildMessageReactionsIntent
-	}
-	if i.GuildMessageTyping {
-		base |= GuildMessageTypingIntent
-	}
-	if i.DM {
-		base |= DMIntent
-	}
-	if i.DMReactions {
-		base |= DMReactionsIntent
-	}
-	if i.DMTyping {
-		base |= DMTypingIntent
-	}
-	if i.MessageContent {
-		base |= MessageContentIntent
-	}
-	if i.GuildScheduleEvents {
-		base |= GuildScheduleEventsIntent
-	}
-	if i.AutoModConfig {
-		base |= AutoModConfigIntent
-	}
-	if i.AutoModExecute {
-		base |= AutoModExecuteIntent
+	for _, intent := range intents {
+		base |= int(intent)
 	}
 	return base
 }
 
 func (i Intents) All() int {
-	return GuildsIntent | GuildMembersIntent | GuildBansIntent | GuildEmojisIntent | GuildIntegrationsIntent | GuildWebhooksIntent | GuildInvitesIntent | GuildVoiceStatesIntent | GuildPresencesIntent | GuildMessagesIntent | GuildMessageReactionsIntent | GuildMessageTypingIntent | DMIntent | DMReactionsIntent | DMTypingIntent | MessageContentIntent | AutoModConfigIntent | AutoModExecuteIntent
-}
-
-func (i Intents) Basic() int {
-	return GuildsIntent | GuildBansIntent | GuildEmojisIntent | GuildIntegrationsIntent | GuildWebhooksIntent | GuildInvitesIntent | GuildVoiceStatesIntent | GuildMessagesIntent | GuildMessageReactionsIntent | GuildMessageTypingIntent | DMIntent | DMReactionsIntent | DMTypingIntent | AutoModConfigIntent | AutoModExecuteIntent | GuildScheduleEventsIntent
-}
-
-func (i Intents) Exclusive() int {
-	return GuildMembersIntent | GuildPresencesIntent | MessageContentIntent
+	base := 0
+	for i := 0; i < 19; i++ {
+		base |= 1 << i
+	}
+	return base
 }

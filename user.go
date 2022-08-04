@@ -20,7 +20,7 @@ type User struct {
 	PublicFlags   int    `json:"public_flags"`
 }
 
-func DataToUser(payload interface{}) *User {
+func unmarshalUser(payload interface{}) *User {
 	u := &User{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, u)

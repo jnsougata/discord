@@ -86,7 +86,7 @@ func (sock *Socket) AddToQueue(commands ...ApplicationCommand) {
 
 func (sock *Socket) registerCommand(com ApplicationCommand, token string, applicationId string) {
 	var route string
-	data, hook, guildId := com.Marshal()
+	data, hook, guildId := com.marshal()
 	if guildId != 0 {
 		route = fmt.Sprintf("/applications/%s/guilds/%v/commands", applicationId, guildId)
 	} else {
@@ -136,7 +136,7 @@ func (sock *Socket) Run(token string) {
 			for _, cmd := range sock.queue {
 				go sock.registerCommand(cmd, token, runtime.Application.Id)
 			}
-			sock.self = Unmarshal(wsmsg.Data["user"].(map[string]interface{}))
+			sock.self = unmarshal(wsmsg.Data["user"].(map[string]interface{}))
 			sock.self.Latency = sock.latency
 			sock.self.IsReady = true
 			islocked = false
@@ -175,9 +175,9 @@ func (sock *Socket) Run(token string) {
 			go handler(wsmsg.Data)
 		}
 		if wsmsg.Event == "GUILD_CREATE" {
-			gld := UnmarshalGuild(wsmsg.Data)
-			gld.UnmarshalRoles(wsmsg.Data["roles"].([]interface{}))
-			gld.UnmarshalChannels(wsmsg.Data["channels"].([]interface{}))
+			gld := unmarshalGuild(wsmsg.Data)
+			gld.unmarshalRoles(wsmsg.Data["roles"].([]interface{}))
+			gld.unmarshalChannels(wsmsg.Data["channels"].([]interface{}))
 			sock.guilds[gld.Id] = gld
 			sock.self.Guilds = sock.guilds
 			if sock.Memoize {
@@ -186,7 +186,7 @@ func (sock *Socket) Run(token string) {
 		}
 		if wsmsg.Event == "GUILD_MEMBERS_CHUNK" {
 			id := wsmsg.Data["guild_id"].(string)
-			sock.guilds[id].UnmarshalMembers(wsmsg.Data["members"].([]interface{}))
+			sock.guilds[id].unmarshalMembers(wsmsg.Data["members"].([]interface{}))
 		}
 	}
 }
@@ -206,7 +206,7 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 	case OnGuildCreate:
 		if event, ok := sock.eventHooks[event]; ok {
 			hook := event.(func(bot BotUser, guild Guild))
-			go hook(*sock.self, *UnmarshalGuild(data))
+			go hook(*sock.self, *unmarshalGuild(data))
 		}
 
 	case OnInteractionCreate:
@@ -222,6 +222,8 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 			if ev, ok := sock.commandHooks[ctx.Data.Id]; ok {
 				hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
 				go hook(*sock.self, *ctx, ctx.Data.Options...)
+			} else {
+				log.Printf("ApplicationCommand (%s) is not implemented.", ctx.Data.Id)
 			}
 		case 3:
 			var compdata ComponentData

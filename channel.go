@@ -33,7 +33,7 @@ type Channel struct {
 	TotalMessages              int           `json:"total_messages"`
 }
 
-func UnmarshalChannel(payload interface{}) *Channel {
+func unmarshalChannel(payload interface{}) *Channel {
 	ch := &Channel{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, ch)
