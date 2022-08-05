@@ -1,12 +1,12 @@
 package disgo
 
 const (
-	OnReady             = "READY"
-	OnGuildCreate       = "GUILD_CREATE"
-	OnGuildDelete       = "GUILD_DELETE"
-	OnInteractionCreate = "INTERACTION_CREATE"
-	OnMessageCreate     = "MESSAGE_CREATE"
-	OnSocketReceive     = "SOCKET_RECEIVE"
+	onReady             = "READY"
+	onGuildCreate       = "GUILD_CREATE"
+	onGuildDelete       = "GUILD_DELETE"
+	onInteractionCreate = "INTERACTION_CREATE"
+	onMessageCreate     = "MESSAGE_CREATE"
+	onSocketReceive     = "SOCKET_RECEIVE"
 	// OnResumed                      = "RESUMED"
 	// onReconnect                 	  = "RECONNECT" --> handle internally
 	// onInvalidSession 		      = "INVALID_SESSION" --> handle internally

@@ -1,9 +1,5 @@
 package disgo
 
-import (
-	"encoding/json"
-)
-
 type Guild struct {
 	Id                          string                   `json:"id"`
 	Name                        string                   `json:"name"`
@@ -57,13 +53,6 @@ type Guild struct {
 	StageInstances              []map[string]interface{} `json:"stage_instances"`
 	Unavailable                 bool                     `json:"unavailable"`
 	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
-}
-
-func unmarshalGuild(payload interface{}) *Guild {
-	guild := &Guild{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, guild)
-	return guild
 }
 
 func (guild *Guild) unmarshalMembers(objs []interface{}) {

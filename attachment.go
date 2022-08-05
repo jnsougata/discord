@@ -1,7 +1,5 @@
 package disgo
 
-import "encoding/json"
-
 // Attachment represents a base Discord attachment
 type Attachment struct {
 	ID          string `json:"id"`
@@ -21,11 +19,4 @@ type PartialAttachment struct {
 	Id          string `json:"id"`
 	Filename    string `json:"filename"`
 	Description string `json:"description"`
-}
-
-func unmarshalAttachment(payload interface{}) *Attachment {
-	attachment := &Attachment{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, attachment)
-	return attachment
 }

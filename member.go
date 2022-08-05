@@ -1,9 +1,5 @@
 package disgo
 
-import (
-	"encoding/json"
-)
-
 type Member struct {
 	User          User     `json:"user"`
 	Nickname      string   `json:"nick"`
@@ -16,11 +12,4 @@ type Member struct {
 	Permissions   int      `json:"permissions"`
 	TimeoutExpiry string   `json:"communication_disabled_until"`
 	GuildId       string   `json:"guild_id"`
-}
-
-func unmarshalMember(payload interface{}) *Member {
-	m := &Member{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, m)
-	return m
 }

@@ -1,9 +1,5 @@
 package disgo
 
-import (
-	"encoding/json"
-)
-
 type Message struct {
 	Id                 string                   `json:"id"`
 	ChannelId          string                   `json:"channel_id"`
@@ -32,11 +28,4 @@ type Message struct {
 	Thread             map[string]interface{}   `json:"thread"`
 	Components         []map[string]interface{} `json:"components"`
 	Stickers           []map[string]interface{} `json:"sticker_items"`
-}
-
-func UnmarshalMessage(payload interface{}) *Message {
-	msg := &Message{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, msg)
-	return msg
 }

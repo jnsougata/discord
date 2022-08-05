@@ -43,11 +43,11 @@ func (resp *Response) Marshal() map[string]interface{} {
 	if resp.Content != "" {
 		body["content"] = resp.Content
 	}
-	if CheckTrueEmbed(resp.Embed) {
+	if checkTrueEmbed(resp.Embed) {
 		resp.Embeds = append([]Embed{resp.Embed}, resp.Embeds...)
 	}
 	for i, em := range resp.Embeds {
-		if !CheckTrueEmbed(em) {
+		if !checkTrueEmbed(em) {
 			resp.Embeds = append(resp.Embeds[:i], resp.Embeds[i+1:]...)
 		}
 	}
@@ -76,12 +76,12 @@ func (resp *Response) Marshal() map[string]interface{} {
 	if len(resp.View.ActionRows) > 0 {
 		body["components"] = resp.View.marshal()
 	}
-	if CheckTrueFile(resp.File) {
+	if checkTrueFile(resp.File) {
 		resp.Files = append([]File{resp.File}, resp.Files...)
 	}
 	body["attachments"] = []map[string]interface{}{}
 	for i, f := range resp.Files {
-		if CheckTrueFile(f) {
+		if checkTrueFile(f) {
 			a := map[string]interface{}{
 				"id":          i,
 				"filename":    f.Name,
@@ -160,7 +160,7 @@ type Context struct {
 	commandData    []SlashCommandOption
 }
 
-func UnmarshalContext(payload interface{}) *Context {
+func unmarshalContext(payload interface{}) *Context {
 	c := &Context{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, c)

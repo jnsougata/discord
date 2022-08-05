@@ -176,9 +176,9 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 
 // ApplicationCommand is a base type for all discord application commands
 type ApplicationCommand struct {
-	Type              CommandType
-	Name              string // must be less than 32 characters
-	Description       string // must be less than 100 characters
+	Type              CommandType // defaults to chat input
+	Name              string      // must be less than 32 characters
+	Description       string      // must be less than 100 characters
 	Options           []CommandOption
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages

@@ -2,7 +2,8 @@ package disgo
 
 // Bot is a function that represents a connection to discord.
 func Bot(intent Intent, cache bool, presence Presence) *connection {
-	return &connection{sock: &Socket{Intent: int(intent), Memoize: cache, Presence: presence}}
+	return &connection{
+		sock: &Socket{intent: int(intent), memoize: cache, presence: presence}}
 }
 
 type connection struct {
@@ -18,25 +19,25 @@ func (con *connection) AddCommands(commands ...ApplicationCommand) {
 }
 
 func (con *connection) OnSocketReceive(handler func(payload map[string]interface{})) {
-	con.sock.AddHandler(OnSocketReceive, handler)
+	con.sock.AddHandler(onSocketReceive, handler)
 }
 
 func (con *connection) OnMessage(handler func(bot BotUser, message Message)) {
-	con.sock.AddHandler(OnMessageCreate, handler)
+	con.sock.AddHandler(onMessageCreate, handler)
 }
 
 func (con *connection) OnReady(handler func(bot BotUser)) {
-	con.sock.AddHandler(OnReady, handler)
+	con.sock.AddHandler(onReady, handler)
 }
 
 func (con *connection) OnInteraction(handler func(bot BotUser, ctx *Context)) {
-	con.sock.AddHandler(OnInteractionCreate, handler)
+	con.sock.AddHandler(onInteractionCreate, handler)
 }
 
 func (con *connection) OnGuildJoin(handler func(bot BotUser, guild Guild)) {
-	con.sock.AddHandler(OnGuildCreate, handler)
+	con.sock.AddHandler(onGuildCreate, handler)
 }
 
 func (con *connection) OnGuildLeave(handler func(bot BotUser, guild Guild)) {
-	con.sock.AddHandler(OnGuildDelete, handler)
+	con.sock.AddHandler(onGuildDelete, handler)
 }

@@ -1,7 +1,5 @@
 package disgo
 
-import "encoding/json"
-
 type EmbedImage struct {
 	Url    string `json:"url"`
 	Height int    `json:"height"`
@@ -95,12 +93,5 @@ func (e *Embed) Marshal() map[string]interface{} {
 			embed["fields"] = append(embed["fields"].([]EmbedField), field)
 		}
 	}
-	return embed
-}
-
-func unmarshalEmbed(payload interface{}) *Embed {
-	embed := &Embed{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, embed)
 	return embed
 }

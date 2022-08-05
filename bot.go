@@ -1,9 +1,5 @@
 package disgo
 
-import (
-	"encoding/json"
-)
-
 type BotUser struct {
 	Id            string `json:"id"`
 	Username      string `json:"username"`
@@ -19,11 +15,4 @@ type BotUser struct {
 	Latency       int64  `json:"latency"`
 	IsReady       bool
 	Guilds        map[string]*Guild
-}
-
-func unmarshal(payload interface{}) *BotUser {
-	bot := &BotUser{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, bot)
-	return bot
 }

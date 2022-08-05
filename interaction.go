@@ -1,9 +1,5 @@
 package disgo
 
-import (
-	"encoding/json"
-)
-
 type SlashCommandOption struct {
 	Name    string               `json:"name"`
 	Type    int                  `json:"type"`
@@ -37,11 +33,4 @@ type Interaction struct {
 	AppPermissions string          `json:"app_permissions"`
 	Locale         string          `json:"locale"`
 	GuildLocale    string          `json:"guild_locale"`
-}
-
-func DataToInteraction(payload interface{}) *Interaction {
-	i := &Interaction{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, i)
-	return i
 }

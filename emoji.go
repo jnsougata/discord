@@ -1,7 +1,5 @@
 package disgo
 
-import "encoding/json"
-
 type PartialEmoji struct {
 	Id       string `json:"id"`
 	Name     string `json:"name"`
@@ -16,11 +14,4 @@ type Emoji struct {
 	Animated      bool     `json:"animated"`
 	Available     bool     `json:"available"`
 	RequireColons bool     `json:"require_colons"`
-}
-
-func unmarshalEmoji(payload interface{}) *Emoji {
-	emoji := &Emoji{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, emoji)
-	return emoji
 }
