@@ -15,20 +15,20 @@ var islocked = false
 // Socket is a Discord websocket connection,
 // responsible for handling all ws events
 type Socket struct {
+	sequence     int
 	intent       int
 	memoize      bool
-	presence     Presence
-	interval     float64
 	beatSent     int64
 	beatAck      int64
 	latency      int64
+	sessionId    string
+	interval     float64
+	presence     Presence
 	self         *BotUser
 	guilds       map[string]*Guild
 	queue        []ApplicationCommand
 	eventHooks   map[string]interface{}
 	commandHooks map[string]interface{}
-	sequence     int
-	sessionId    string
 }
 
 func (sock *Socket) getGateway() string {
