@@ -98,7 +98,18 @@ func (sock *Socket) registerCommand(com ApplicationCommand, token string, applic
 	_ = json.Unmarshal(body, &d)
 	_, ok := d["id"]
 	if ok {
-		sock.commandHooks[d["id"].(string)] = hook
+		commandId := d["id"].(string)
+		sock.commandHooks[commandId] = hook
+		sc, there := subcommandBucket[com.uniqueId]
+		if there {
+			subcommandBucket[commandId] = sc
+			delete(subcommandBucket, com.uniqueId)
+		}
+		scg, there := groupBucket[com.uniqueId]
+		if there {
+			groupBucket[commandId] = scg
+			delete(groupBucket, com.uniqueId)
+		}
 	} else {
 		log.Fatal(
 			fmt.Sprintf("Failed to register command {%s}. Reason: %s", com.Name, d["message"]))
@@ -220,8 +231,53 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 			// interaction ping
 		case 2:
 			if ev, ok := sock.commandHooks[ctx.Data.Id]; ok {
-				hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
-				go hook(*sock.self, *ctx, ctx.Data.Options...)
+				switch ctx.Data.Type {
+				case 1:
+					hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+					go hook(*sock.self, *ctx, ctx.Data.Options...)
+					for _, option := range ctx.Data.Options {
+						switch option.Type {
+						case 1:
+							name := option.Name
+							id := ctx.Data.Id
+							if bucket, ok := subcommandBucket[id]; ok {
+								buck := bucket.(map[string]interface{})
+								if hook, k := buck[name]; k {
+									scHook := hook.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+									go scHook(*sock.self, *ctx, option.Options...)
+								}
+							}
+						case 2:
+							name := option.Name
+							id := ctx.Data.Id
+							if bucket, ok := groupBucket[id]; ok {
+								scs := option.Options
+								buck := bucket.(map[string]interface{})
+								for _, sc := range scs {
+									mapName := name + "_" + sc.Name
+									if hook, k := buck[mapName]; k {
+										scHook := hook.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+										go scHook(*sock.self, *ctx, sc.Options...)
+									}
+								}
+							}
+
+						}
+					}
+				case 2:
+					target := ctx.Data.TargetId
+					resolvedUserData := ctx.Data.Resolved["users"].(map[string]interface{})[target]
+					ctx.TargetUser = *unmarshalUser(resolvedUserData)
+					hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+					go hook(*sock.self, *ctx)
+				case 3:
+					// message command
+					target := ctx.Data.TargetId
+					resolvedMessageData := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
+					ctx.TargetMessage = *UnmarshalMessage(resolvedMessageData)
+					hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+					go hook(*sock.self, *ctx)
+				}
 			} else {
 				log.Printf("ApplicationCommand (%s) is not implemented.", ctx.Data.Id)
 			}
@@ -229,35 +285,35 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 			var compdata ComponentData
 			da, _ := json.Marshal(data["data"].(map[string]interface{}))
 			_ = json.Unmarshal(da, &compdata)
-			ctx.ComponentData = compdata
-			switch ctx.ComponentData.ComponentType {
+			ctx.componentData = compdata
+			switch ctx.componentData.ComponentType {
 			case 2:
-				cb, ok := callbackTasks[ctx.ComponentData.CustomId]
+				cb, ok := callbackTasks[ctx.componentData.CustomId]
 				if ok {
 					callback := cb.(func(b BotUser, ctx Context))
 					go callback(*sock.self, *ctx)
 				}
 			case 3:
-				cb, ok := callbackTasks[ctx.ComponentData.CustomId]
+				cb, ok := callbackTasks[ctx.componentData.CustomId]
 				if ok {
 					callback := cb.(func(b BotUser, ctx Context, values ...string))
-					go callback(*sock.self, *ctx, ctx.ComponentData.Values...)
+					go callback(*sock.self, *ctx, ctx.componentData.Values...)
 				}
 			}
-			tmp, ok := timeoutTasks[ctx.ComponentData.CustomId]
+			tmp, ok := timeoutTasks[ctx.componentData.CustomId]
 			if ok {
 				onTimeoutHandler := tmp[1].(func(b BotUser, ctx Context))
 				duration := tmp[0].(float64)
-				delete(timeoutTasks, ctx.ComponentData.CustomId)
+				delete(timeoutTasks, ctx.componentData.CustomId)
 				go scheduleTimeoutTask(duration, *sock.self, *ctx, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
-			callback, ok := callbackTasks[ctx.ComponentData.CustomId]
+			callback, ok := callbackTasks[ctx.componentData.CustomId]
 			if ok {
 				go callback.(func(b BotUser, ctx *Context))(*sock.self, ctx)
-				delete(callbackTasks, ctx.ComponentData.CustomId)
+				delete(callbackTasks, ctx.componentData.CustomId)
 			}
 		default:
 			log.Println("Unknown interaction type: ", ctx.Type)

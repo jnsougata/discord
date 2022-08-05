@@ -4,6 +4,9 @@ import (
 	"fmt"
 )
 
+var subcommandBucket = map[string]interface{}{}
+var groupBucket = map[string]interface{}{}
+
 type CommandType int
 
 const (
@@ -57,7 +60,6 @@ type CommandOption struct {
 	AutoComplete bool          // allowed for: StringOption, NumberOption, IntegerOption
 	ChannelTypes []ChannelType // allowed for: ChannelOption
 	Choices      []Choice      // allowed for: StringOption, IntegerOption, NumberOption
-	//Options      []CommandOption // for type 1 and 2 only
 }
 
 func (co *CommandOption) marshal() map[string]interface{} {
@@ -109,6 +111,69 @@ func (co *CommandOption) marshal() map[string]interface{} {
 	return body
 }
 
+type SubCommand struct {
+	Name        string
+	Description string
+	Options     []CommandOption
+	handler     func(bot BotUser, ctx Context, options ...SlashCommandOption)
+}
+
+func (sc *SubCommand) Handler(handler func(bot BotUser, ctx Context, options ...SlashCommandOption)) {
+	sc.handler = handler
+}
+
+func (sc *SubCommand) marshal() map[string]interface{} {
+	body := map[string]interface{}{}
+	if sc.Name == "" || sc.Description == "" {
+		panic("Both command {name} or {description} must be set")
+	}
+	if len(sc.Name) > 32 {
+		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", sc.Name))
+	}
+	if len(sc.Description) > 100 {
+		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", sc.Name))
+	}
+	body["type"] = 1
+	body["name"] = sc.Name
+	body["description"] = sc.Description
+	for _, option := range sc.Options {
+		body["options"] = append(body["options"].([]map[string]interface{}), option.marshal())
+	}
+	return body
+}
+
+type SubcommandGroup struct {
+	Name        string
+	Description string
+	subcommands []SubCommand
+}
+
+func (scg *SubcommandGroup) Subcommands(subcommands ...SubCommand) {
+	for _, subcommand := range subcommands {
+		scg.subcommands = append(scg.subcommands, subcommand)
+	}
+}
+
+func (scg *SubcommandGroup) marshal() map[string]interface{} {
+	body := map[string]interface{}{}
+	if scg.Name == "" || scg.Description == "" {
+		panic("Both command {name} or {description} must be set")
+	}
+	if len(scg.Name) > 32 {
+		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", scg.Name))
+	}
+	if len(scg.Description) > 100 {
+		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", scg.Name))
+	}
+	body["type"] = 2
+	body["name"] = scg.Name
+	body["description"] = scg.Description
+	for _, subcommand := range scg.subcommands {
+		body["options"] = append(body["options"].([]map[string]interface{}), subcommand.marshal())
+	}
+	return body
+}
+
 // ApplicationCommand is a base type for all discord application commands
 type ApplicationCommand struct {
 	Type              CommandType
@@ -118,8 +183,11 @@ type ApplicationCommand struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
+	uniqueId          string
 	handler           func(bot BotUser, ctx Context, options ...SlashCommandOption)
 	autocomplete      func(bot BotUser, ctx Context, choices ...Choice)
+	subcommands       []SubCommand
+	subcommandGroups  []SubcommandGroup
 }
 
 func (cmd *ApplicationCommand) Handler(handler func(bot BotUser, ctx Context, options ...SlashCommandOption)) {
@@ -130,8 +198,17 @@ func (cmd *ApplicationCommand) AutoCompleteHandler(handler func(bot BotUser, ctx
 	cmd.autocomplete = handler
 }
 
-// TODO: add subcommand to application command
-// TODO: add subcommand group to application command
+func (cmd *ApplicationCommand) SubCommands(subcommands ...SubCommand) {
+	for _, subcommand := range subcommands {
+		cmd.subcommands = append(cmd.subcommands, subcommand)
+	}
+}
+
+func (cmd *ApplicationCommand) SubcommandGroups(subcommandGroups ...SubcommandGroup) {
+	for _, subcommandGroup := range subcommandGroups {
+		cmd.subcommandGroups = append(cmd.subcommandGroups, subcommandGroup)
+	}
+}
 
 func (cmd *ApplicationCommand) marshal() (
 	map[string]interface{},
@@ -141,13 +218,17 @@ func (cmd *ApplicationCommand) marshal() (
 	switch int(cmd.Type) {
 	case 3:
 		body["type"] = 3
+		cmd.Type = CommandType(3)
 	case 2:
 		body["type"] = 2
+		cmd.Type = CommandType(2)
 	default:
 		body["type"] = 1
+		cmd.Type = CommandType(1)
 	}
-	if cmd.Name == "" || cmd.Description == "" {
-		panic("Both command {name} or {description} must be set")
+	cmd.uniqueId = assignId("")
+	if cmd.Name == "" {
+		panic("Command {name} must be set")
 	}
 	if len(cmd.Name) > 32 {
 		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", cmd.Name))
@@ -156,7 +237,13 @@ func (cmd *ApplicationCommand) marshal() (
 		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", cmd.Name))
 	}
 	body["name"] = cmd.Name
-	body["description"] = cmd.Description
+	if cmd.Type == SlashCommand && cmd.Description == "" {
+		panic("Command {description} must be set for command " + cmd.Name)
+	} else if cmd.Type != SlashCommand && cmd.Description != "" {
+		panic("Command {description} is only allowed for SlashCommand")
+	} else {
+		body["description"] = cmd.Description
+	}
 	body["dm_permission"] = cmd.DMPermission
 	switch cmd.MemberPermissions {
 	case 0:
@@ -164,9 +251,27 @@ func (cmd *ApplicationCommand) marshal() (
 	default:
 		body["default_member_permissions"] = cmd.MemberPermissions
 	}
-	if cmd.Type == 1 {
-		for _, option := range cmd.Options {
-			body["options"] = append(body["options"].([]map[string]interface{}), option.marshal())
+	if int(cmd.Type) == 1 {
+		body["options"] = []map[string]interface{}{}
+		if len(cmd.Options) > 0 && len(cmd.subcommands) > 0 {
+			panic("Command cannot have both options and Subcommands")
+		} else if len(cmd.Options) > 0 {
+			for _, option := range cmd.Options {
+				body["options"] = append(body["options"].([]map[string]interface{}), option.marshal())
+			}
+		} else if len(cmd.subcommands) > 0 || len(cmd.subcommandGroups) > 0 {
+			for _, subcommand := range cmd.subcommands {
+				body["options"] = append(body["options"].([]map[string]interface{}), subcommand.marshal())
+				subcommandBucket[cmd.uniqueId] = map[string]interface{}{subcommand.Name: subcommand.handler}
+			}
+			for _, subcommandGroup := range cmd.subcommandGroups {
+				body["options"] = append(body["options"].([]map[string]interface{}), subcommandGroup.marshal())
+				for _, subcommand := range subcommandGroup.subcommands {
+					groupBucket[cmd.uniqueId] = map[string]interface{}{
+						fmt.Sprintf(`%s_%s`, subcommandGroup.Name, subcommand.Name): subcommand.handler,
+					}
+				}
+			}
 		}
 	}
 	return body, cmd.handler, cmd.GuildId

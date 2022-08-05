@@ -141,21 +141,23 @@ func (f *Followup) Edit(resp Response) Followup {
 }
 
 type Context struct {
-	Id             string               `json:"id"`
-	ApplicationId  string               `json:"application_id"`
-	Type           int                  `json:"type"`
-	Data           InteractionData      `json:"data"`
-	GuildId        string               `json:"guild_id"`
-	ChannelId      string               `json:"channel_id"`
-	Member         Member               `json:"member"`
-	User           User                 `json:"user"`
-	Token          string               `json:"token"`
-	Version        int                  `json:"version"`
-	AppPermissions string               `json:"app_permissions"`
-	Locale         string               `json:"locale"`
-	GuildLocale    string               `json:"guild_locale"`
-	ComponentData  ComponentData        `json:"x_component"`
-	CommandData    []SlashCommandOption `json:"x_command"`
+	Id             string          `json:"id"`
+	ApplicationId  string          `json:"application_id"`
+	Type           int             `json:"type"`
+	Data           InteractionData `json:"data"`
+	GuildId        string          `json:"guild_id"`
+	ChannelId      string          `json:"channel_id"`
+	Member         Member          `json:"member"`
+	User           User            `json:"user"`
+	Token          string          `json:"token"`
+	Version        int             `json:"version"`
+	AppPermissions string          `json:"app_permissions"`
+	Locale         string          `json:"locale"`
+	GuildLocale    string          `json:"guild_locale"`
+	TargetUser     User
+	TargetMessage  Message
+	componentData  ComponentData
+	commandData    []SlashCommandOption
 }
 
 func UnmarshalContext(payload interface{}) *Context {
