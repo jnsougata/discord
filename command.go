@@ -56,7 +56,6 @@ type Option struct {
 	Name         string      `json:"name"`
 	Type         OptionType  `json:"type"`
 	Value        interface{} `json:"value"`   // available only during option parsing
-	Options      []Option    `json:"options"` // available only during option parsing
 	Focused      bool        `json:"focused"` // available only during option parsing
 	Description  string
 	Required     bool
@@ -72,9 +71,6 @@ type Option struct {
 func (o *Option) marshal() map[string]interface{} {
 	if o.Value != nil {
 		panic("Option {value} must not be set while creating an option")
-	}
-	if len(o.Options) > 0 {
-		panic("Option {options} must not be set while creating an option")
 	}
 	if o.Focused {
 		panic("Option {focused} must not be set while creating an option")
@@ -161,7 +157,7 @@ type SubCommand struct {
 	Name        string
 	Description string
 	Options     []Option
-	Handler     func(bot BotUser, ctx Context, options ...Option)
+	Task        func(bot BotUser, ctx Context, options ...Option)
 }
 
 func (sc *SubCommand) marshal() map[string]interface{} {
@@ -218,18 +214,18 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 
 // ApplicationCommand is a base type for all discord application commands
 type ApplicationCommand struct {
-	Type                CommandType // defaults to chat input
-	Name                string      // must be less than 32 characters
-	Description         string      // must be less than 100 characters
-	Options             []Option
-	DMPermission        bool // default: false
-	MemberPermissions   int  // default: send_messages
-	GuildId             int64
-	uniqueId            string
-	Handler             func(bot BotUser, ctx Context, options ...Option)
-	AutocompleteHandler func(bot BotUser, ctx Context, choices ...Choice)
-	subcommands         []SubCommand
-	subcommandGroups    []SubcommandGroup
+	Type              CommandType // defaults to chat input
+	Name              string      // must be less than 32 characters
+	Description       string      // must be less than 100 characters
+	Options           []Option
+	DMPermission      bool // default: false
+	MemberPermissions int  // default: send_messages
+	GuildId           int64
+	uniqueId          string
+	subcommands       []SubCommand
+	subcommandGroups  []SubcommandGroup
+	Task              func(bot BotUser, ctx Context, options ...Option)
+	AutocompleteTask  func(bot BotUser, ctx Context, choices ...Choice)
 }
 
 func (cmd *ApplicationCommand) SubCommands(subcommands ...SubCommand) {
@@ -249,16 +245,16 @@ func (cmd *ApplicationCommand) marshal() (
 	func(bot BotUser, ctx Context, options ...Option),
 	int64) {
 	body := map[string]interface{}{}
-	switch int(cmd.Type) {
-	case 3:
-		body["type"] = 3
-		cmd.Type = CommandType(3)
-	case 2:
-		body["type"] = 2
-		cmd.Type = CommandType(2)
+	switch cmd.Type {
+	case MessageCommand:
+		body["type"] = int(MessageCommand)
+		cmd.Type = MessageCommand
+	case UserCommand:
+		body["type"] = int(UserCommand)
+		cmd.Type = UserCommand
 	default:
-		body["type"] = 1
-		cmd.Type = CommandType(1)
+		body["type"] = int(SlashCommand)
+		cmd.Type = SlashCommand
 	}
 	cmd.uniqueId = assignId("")
 	if cmd.Name == "" {
@@ -287,19 +283,19 @@ func (cmd *ApplicationCommand) marshal() (
 		} else if len(cmd.subcommands) > 0 || len(cmd.subcommandGroups) > 0 {
 			for _, subcommand := range cmd.subcommands {
 				body["options"] = append(body["options"].([]map[string]interface{}), subcommand.marshal())
-				subcommandBucket[cmd.uniqueId] = map[string]interface{}{subcommand.Name: subcommand.Handler}
+				subcommandBucket[cmd.uniqueId] = map[string]interface{}{subcommand.Name: subcommand.Task}
 			}
 			for _, subcommandGroup := range cmd.subcommandGroups {
 				body["options"] = append(body["options"].([]map[string]interface{}), subcommandGroup.marshal())
 				for _, subcommand := range subcommandGroup.subcommands {
 					groupBucket[cmd.uniqueId] = map[string]interface{}{
-						fmt.Sprintf(`%s_%s`, subcommandGroup.Name, subcommand.Name): subcommand.Handler,
+						fmt.Sprintf(`%s_%s`, subcommandGroup.Name, subcommand.Name): subcommand.Task,
 					}
 				}
 			}
 		}
-		if cmd.AutocompleteHandler != nil {
-			autocompleteBucket[cmd.uniqueId] = cmd.AutocompleteHandler
+		if cmd.AutocompleteTask != nil {
+			autocompleteBucket[cmd.uniqueId] = cmd.AutocompleteTask
 		}
 	case UserCommand:
 		if cmd.Description != "" {
@@ -335,5 +331,5 @@ func (cmd *ApplicationCommand) marshal() (
 	default:
 		body["default_member_permissions"] = cmd.MemberPermissions
 	}
-	return body, cmd.Handler, cmd.GuildId
+	return body, cmd.Task, cmd.GuildId
 }
