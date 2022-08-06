@@ -245,7 +245,7 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 			if ev, ok := sock.commandHooks[ctx.Data.Id]; ok {
 				switch ctx.Data.Type {
 				case 1:
-					hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+					hook := ev.(func(bot BotUser, ctx Context, ops ...Option))
 					go hook(*sock.self, *ctx, ctx.Data.Options...)
 					for _, option := range ctx.Data.Options {
 						switch option.Type {
@@ -255,7 +255,7 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 							if bucket, ok := subcommandBucket[id]; ok {
 								buck := bucket.(map[string]interface{})
 								if hook, k := buck[name]; k {
-									scHook := hook.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+									scHook := hook.(func(bot BotUser, ctx Context, ops ...Option))
 									go scHook(*sock.self, *ctx, option.Options...)
 								}
 							}
@@ -268,7 +268,7 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 								for _, sc := range scs {
 									mapName := name + "_" + sc.Name
 									if hook, k := buck[mapName]; k {
-										scHook := hook.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+										scHook := hook.(func(bot BotUser, ctx Context, ops ...Option))
 										go scHook(*sock.self, *ctx, sc.Options...)
 									}
 								}
@@ -280,14 +280,14 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 					target := ctx.Data.TargetId
 					resolvedUserData := ctx.Data.Resolved["users"].(map[string]interface{})[target]
 					ctx.TargetUser = *unmarshalUser(resolvedUserData)
-					hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+					hook := ev.(func(bot BotUser, ctx Context, ops ...Option))
 					go hook(*sock.self, *ctx)
 				case 3:
 					// message command
 					target := ctx.Data.TargetId
 					resolvedMessageData := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
 					ctx.TargetMessage = *unmarshalMessage(resolvedMessageData)
-					hook := ev.(func(bot BotUser, ctx Context, ops ...SlashCommandOption))
+					hook := ev.(func(bot BotUser, ctx Context, ops ...Option))
 					go hook(*sock.self, *ctx)
 				}
 			} else {

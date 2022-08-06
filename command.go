@@ -4,8 +4,9 @@ import (
 	"fmt"
 )
 
-var subcommandBucket = map[string]interface{}{}
 var groupBucket = map[string]interface{}{}
+var subcommandBucket = map[string]interface{}{}
+var autocompleteBucket = map[string]interface{}{}
 
 type CommandType int
 
@@ -18,17 +19,15 @@ const (
 type OptionType int
 
 const (
-	SubCommandType      OptionType = 1
-	SupCommandGroupType OptionType = 2
-	StringOption        OptionType = 3
-	IntegerOption       OptionType = 4
-	BooleanOption       OptionType = 5
-	UserOption          OptionType = 6
-	ChannelOption       OptionType = 7
-	RoleOption          OptionType = 8
-	MentionableOption   OptionType = 9
-	NumberOption        OptionType = 10
-	AttachmentOption    OptionType = 11
+	StringOption      OptionType = 3
+	IntegerOption     OptionType = 4
+	BooleanOption     OptionType = 5
+	UserOption        OptionType = 6
+	ChannelOption     OptionType = 7
+	RoleOption        OptionType = 8
+	MentionableOption OptionType = 9
+	NumberOption      OptionType = 10
+	AttachmentOption  OptionType = 11
 )
 
 type ChannelType int
@@ -48,10 +47,18 @@ const (
 	GuildForum         ChannelType = 15
 )
 
-type CommandOption struct {
-	Name         string
+type Choice struct {
+	Name  string      `json:"name"`
+	Value interface{} `json:"value"` // same type as type of option
+}
+
+type Option struct {
+	Name         string      `json:"name"`
+	Type         OptionType  `json:"type"`
+	Value        interface{} `json:"value"`   // available only during option parsing
+	Options      []Option    `json:"options"` // available only during option parsing
+	Focused      bool        `json:"focused"` // available only during option parsing
 	Description  string
-	Type         OptionType
 	Required     bool
 	MinLength    int           // allowed for: StringOption
 	MaxLength    int           // allowed for: StringOption
@@ -62,64 +69,99 @@ type CommandOption struct {
 	Choices      []Choice      // allowed for: StringOption, IntegerOption, NumberOption
 }
 
-func (co *CommandOption) marshal() map[string]interface{} {
+func (o *Option) marshal() map[string]interface{} {
+	if o.Value != nil {
+		panic("Option {value} must not be set while creating an option")
+	}
+	if len(o.Options) > 0 {
+		panic("Option {options} must not be set while creating an option")
+	}
+	if o.Focused {
+		panic("Option {focused} must not be set while creating an option")
+	}
 	body := map[string]interface{}{}
-	if co.Name == "" || co.Description == "" {
+	if o.Name == "" || o.Description == "" {
 		panic("Both command {name} or {description} must be set")
 	}
-	if len(co.Name) > 32 {
-		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", co.Name))
+	if len(o.Name) > 32 {
+		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", o.Name))
 	}
-	if len(co.Description) > 100 {
-		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", co.Name))
+	if len(o.Description) > 100 {
+		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", o.Name))
 	}
-	body["name"] = co.Name
-	body["description"] = co.Description
-	body["type"] = co.Type
-	body["required"] = co.Required
-	switch int(co.Type) {
-	case 3:
-		body["min_length"] = co.MinLength
-		body["max_length"] = co.MaxLength
-		if len(co.Choices) > 0 {
-			body["choices"] = co.Choices
-		} else if co.AutoComplete {
+	body["name"] = o.Name
+	body["description"] = o.Description
+	body["type"] = o.Type
+	body["required"] = o.Required
+	switch o.Type {
+	case StringOption:
+		body["min_length"] = o.MinLength
+		body["max_length"] = o.MaxLength
+		if len(o.Choices) > 0 {
+			body["choices"] = o.Choices
+		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case 4:
-		body["min_value"] = co.MinValue
-		body["max_value"] = co.MaxValue
-		if len(co.Choices) > 0 {
-			body["choices"] = co.Choices
-		} else if co.AutoComplete {
+	case IntegerOption:
+		body["min_value"] = o.MinValue
+		body["max_value"] = o.MaxValue
+		if len(o.Choices) > 0 {
+			body["choices"] = o.Choices
+		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case 10:
-		body["min_value"] = co.MinValue
-		body["max_value"] = co.MaxValue
-		if len(co.Choices) > 0 {
-			body["choices"] = co.Choices
-		} else if co.AutoComplete {
+	case NumberOption:
+		body["min_value"] = o.MinValue
+		body["max_value"] = o.MaxValue
+		if len(o.Choices) > 0 {
+			body["choices"] = o.Choices
+		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case 7:
-		for _, channelType := range co.ChannelTypes {
+	case ChannelOption:
+		allowed := map[int]ChannelType{
+			int(GuildText):          GuildText,
+			int(DMText):             DMText,
+			int(GuildVoice):         GuildVoice,
+			int(GroupDM):            GroupDM,
+			int(GuildCategory):      GuildCategory,
+			int(GuildNews):          GuildNews,
+			int(GuildNewsThread):    GuildNewsThread,
+			int(GuildPublicThread):  GuildPublicThread,
+			int(GuildPrivateThread): GuildPrivateThread,
+			int(GuildStageVoice):    GuildStageVoice,
+			int(GuildDirectory):     GuildDirectory,
+			int(GuildForum):         GuildForum,
+		}
+		func() {
+			for _, channelType := range o.ChannelTypes {
+				if _, ok := allowed[int(channelType)]; !ok {
+					panic(fmt.Sprintf("Channel type (%d) is not allowed", channelType))
+				}
+			}
+		}()
+		for _, channelType := range o.ChannelTypes {
 			body["channel_types"] = append(body["channel_types"].([]int), int(channelType))
 		}
+	case RoleOption:
+
+	case UserOption:
+
+	case BooleanOption:
+
+	case MentionableOption:
+
+	case AttachmentOption:
+
 	}
-	//body["options"] = co.Options
 	return body
 }
 
 type SubCommand struct {
 	Name        string
 	Description string
-	Options     []CommandOption
-	handler     func(bot BotUser, ctx Context, options ...SlashCommandOption)
-}
-
-func (sc *SubCommand) Handler(handler func(bot BotUser, ctx Context, options ...SlashCommandOption)) {
-	sc.handler = handler
+	Options     []Option
+	Handler     func(bot BotUser, ctx Context, options ...Option)
 }
 
 func (sc *SubCommand) marshal() map[string]interface{} {
@@ -176,26 +218,18 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 
 // ApplicationCommand is a base type for all discord application commands
 type ApplicationCommand struct {
-	Type              CommandType // defaults to chat input
-	Name              string      // must be less than 32 characters
-	Description       string      // must be less than 100 characters
-	Options           []CommandOption
-	DMPermission      bool // default: false
-	MemberPermissions int  // default: send_messages
-	GuildId           int64
-	uniqueId          string
-	handler           func(bot BotUser, ctx Context, options ...SlashCommandOption)
-	autocomplete      func(bot BotUser, ctx Context, choices ...Choice)
-	subcommands       []SubCommand
-	subcommandGroups  []SubcommandGroup
-}
-
-func (cmd *ApplicationCommand) Handler(handler func(bot BotUser, ctx Context, options ...SlashCommandOption)) {
-	cmd.handler = handler
-}
-
-func (cmd *ApplicationCommand) AutoCompleteHandler(handler func(bot BotUser, ctx Context, choices ...Choice)) {
-	cmd.autocomplete = handler
+	Type                CommandType // defaults to chat input
+	Name                string      // must be less than 32 characters
+	Description         string      // must be less than 100 characters
+	Options             []Option
+	DMPermission        bool // default: false
+	MemberPermissions   int  // default: send_messages
+	GuildId             int64
+	uniqueId            string
+	Handler             func(bot BotUser, ctx Context, options ...Option)
+	AutocompleteHandler func(bot BotUser, ctx Context, choices ...Choice)
+	subcommands         []SubCommand
+	subcommandGroups    []SubcommandGroup
 }
 
 func (cmd *ApplicationCommand) SubCommands(subcommands ...SubCommand) {
@@ -212,7 +246,7 @@ func (cmd *ApplicationCommand) SubcommandGroups(subcommandGroups ...SubcommandGr
 
 func (cmd *ApplicationCommand) marshal() (
 	map[string]interface{},
-	func(bot BotUser, ctx Context, options ...SlashCommandOption),
+	func(bot BotUser, ctx Context, options ...Option),
 	int64) {
 	body := map[string]interface{}{}
 	switch int(cmd.Type) {
@@ -237,21 +271,12 @@ func (cmd *ApplicationCommand) marshal() (
 		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", cmd.Name))
 	}
 	body["name"] = cmd.Name
-	if cmd.Type == SlashCommand && cmd.Description == "" {
-		panic("Command {description} must be set for command " + cmd.Name)
-	} else if cmd.Type != SlashCommand && cmd.Description != "" {
-		panic("Command {description} is only allowed for SlashCommand")
-	} else {
+	switch cmd.Type {
+	case SlashCommand:
+		if cmd.Description == "" {
+			panic("Command {description} must be set")
+		}
 		body["description"] = cmd.Description
-	}
-	body["dm_permission"] = cmd.DMPermission
-	switch cmd.MemberPermissions {
-	case 0:
-		body["default_member_permissions"] = 1 << 11
-	default:
-		body["default_member_permissions"] = cmd.MemberPermissions
-	}
-	if int(cmd.Type) == 1 {
 		body["options"] = []map[string]interface{}{}
 		if len(cmd.Options) > 0 && len(cmd.subcommands) > 0 {
 			panic("Command cannot have both options and Subcommands")
@@ -262,22 +287,53 @@ func (cmd *ApplicationCommand) marshal() (
 		} else if len(cmd.subcommands) > 0 || len(cmd.subcommandGroups) > 0 {
 			for _, subcommand := range cmd.subcommands {
 				body["options"] = append(body["options"].([]map[string]interface{}), subcommand.marshal())
-				subcommandBucket[cmd.uniqueId] = map[string]interface{}{subcommand.Name: subcommand.handler}
+				subcommandBucket[cmd.uniqueId] = map[string]interface{}{subcommand.Name: subcommand.Handler}
 			}
 			for _, subcommandGroup := range cmd.subcommandGroups {
 				body["options"] = append(body["options"].([]map[string]interface{}), subcommandGroup.marshal())
 				for _, subcommand := range subcommandGroup.subcommands {
 					groupBucket[cmd.uniqueId] = map[string]interface{}{
-						fmt.Sprintf(`%s_%s`, subcommandGroup.Name, subcommand.Name): subcommand.handler,
+						fmt.Sprintf(`%s_%s`, subcommandGroup.Name, subcommand.Name): subcommand.Handler,
 					}
 				}
 			}
 		}
+		if cmd.AutocompleteHandler != nil {
+			autocompleteBucket[cmd.uniqueId] = cmd.AutocompleteHandler
+		}
+	case UserCommand:
+		if cmd.Description != "" {
+			panic("Command {description} must not be set for user commands")
+		}
+		if len(cmd.Options) > 0 {
+			panic("Command cannot have options for user commands")
+		}
+		if len(cmd.subcommands) > 0 {
+			panic("Command cannot have subcommands for user commands")
+		}
+		if len(cmd.subcommandGroups) > 0 {
+			panic("Command cannot have subcommand groups for user commands")
+		}
+	case MessageCommand:
+		if cmd.Description != "" {
+			panic("Command {description} must not be set for message commands")
+		}
+		if len(cmd.Options) > 0 {
+			panic("Command cannot have options for message commands")
+		}
+		if len(cmd.subcommands) > 0 {
+			panic("Command cannot have subcommands for user commands")
+		}
+		if len(cmd.subcommandGroups) > 0 {
+			panic("Command cannot have subcommand groups for user commands")
+		}
 	}
-	return body, cmd.handler, cmd.GuildId
-}
-
-type Choice struct {
-	Name  string      `json:"name"`
-	Value interface{} `json:"value"` // same type as type of option
+	body["dm_permission"] = cmd.DMPermission
+	switch cmd.MemberPermissions {
+	case 0:
+		body["default_member_permissions"] = 1 << 11
+	default:
+		body["default_member_permissions"] = cmd.MemberPermissions
+	}
+	return body, cmd.Handler, cmd.GuildId
 }

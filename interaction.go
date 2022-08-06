@@ -1,19 +1,11 @@
 package disgo
 
-type SlashCommandOption struct {
-	Name    string               `json:"name"`
-	Type    int                  `json:"type"`
-	Value   interface{}          `json:"value"`
-	Options []SlashCommandOption `json:"options"`
-	Focused bool                 `json:"focused"`
-}
-
 type InteractionData struct {
 	Id       string                 `json:"id"`
 	Name     string                 `json:"name"`
 	Type     int                    `json:"type"`
 	Resolved map[string]interface{} `json:"resolved"`
-	Options  []SlashCommandOption   `json:"options"`
+	Options  []Option               `json:"options"`
 	GuildId  string                 `json:"guild_id"`
 	TargetId string                 `json:"target_id"`
 }

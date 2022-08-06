@@ -157,7 +157,7 @@ type Context struct {
 	TargetUser     User
 	TargetMessage  Message
 	componentData  ComponentData
-	commandData    []SlashCommandOption
+	commandData    []Option
 }
 
 func unmarshalContext(payload interface{}) *Context {
