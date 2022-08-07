@@ -168,6 +168,7 @@ type Context struct {
 	TargetMessage  Message
 	componentData  ComponentData
 	commandData    []Option
+	raw            map[string]interface{}
 }
 
 func unmarshalContext(payload interface{}) *Context {

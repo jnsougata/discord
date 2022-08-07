@@ -58,13 +58,6 @@ func unmarshalEmoji(payload interface{}) *Emoji {
 	return emoji
 }
 
-func unmarshalInteraction(payload interface{}) *Interaction {
-	i := &Interaction{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, i)
-	return i
-}
-
 func unmarshalEmbed(payload interface{}) *Embed {
 	embed := &Embed{}
 	data, _ := json.Marshal(payload)

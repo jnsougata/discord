@@ -234,6 +234,7 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 		}
 	case onInteractionCreate:
 		ctx := unmarshalContext(data)
+		ctx.raw = data
 		if event, ok := sock.eventHooks[event]; ok {
 			hook := event.(func(bot BotUser, ctx Context))
 			go hook(*sock.self, *ctx)
@@ -242,27 +243,53 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 		case 1:
 			// interaction ping
 		case 2:
-			if ev, ok := sock.commandHooks[ctx.Data.Id]; ok {
+			if task, ok := sock.commandHooks[ctx.Data.Id]; ok {
 				switch ctx.Data.Type {
 				case 1:
-					hook := ev.(func(bot BotUser, ctx Context, ops ...Option))
-					go hook(*sock.self, *ctx, ctx.Data.Options...)
+					type subOption struct {
+						Name    string   `json:"name"`
+						Options []Option `json:"options"`
+						Type    int      `json:"type"`
+					}
 					for _, option := range ctx.Data.Options {
-						fmt.Println(option.Name)
-						// TODO: implement subcommands & groups
+						if int(option.Type) == 1 {
+							subOptions := map[string]Option{}
+							d := ctx.raw["data"].(map[string]interface{})["options"].([]interface{})
+							ds, _ := json.Marshal(d)
+							var so []subOption
+							_ = json.Unmarshal(ds, &so)
+							for _, opt := range so[0].Options {
+								subOptions[opt.Name] = opt
+							}
+							if hook, ok := subcommandBucket[ctx.Data.Id]; ok {
+								scTask, exists := hook.(map[string]interface{})[option.Name]
+								if exists {
+									hook := scTask.(func(bot BotUser, ctx Context, options map[string]Option))
+									go hook(*sock.self, *ctx, subOptions)
+								}
+							}
+						}
+					}
+					hook := task.(func(bot BotUser, ctx Context, ops map[string]Option))
+					options := map[string]Option{}
+					for _, option := range ctx.Data.Options {
+						options[option.Name] = option
+					}
+					if hook != nil {
+						go hook(*sock.self, *ctx, options)
 					}
 				case 2:
 					target := ctx.Data.TargetId
 					resolvedUserData := ctx.Data.Resolved["users"].(map[string]interface{})[target]
 					ctx.TargetUser = *unmarshalUser(resolvedUserData)
-					hook := ev.(func(bot BotUser, ctx Context, _ ...Option))
-					go hook(*sock.self, *ctx)
+					hook := task.(func(bot BotUser, ctx Context, _ map[string]Option))
+					go hook(*sock.self, *ctx, nil)
 				case 3:
 					target := ctx.Data.TargetId
 					resolvedMessageData := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
 					ctx.TargetMessage = *unmarshalMessage(resolvedMessageData)
-					hook := ev.(func(bot BotUser, ctx Context, _ ...Option))
-					go hook(*sock.self, *ctx)
+					hook := task.(func(bot BotUser, ctx Context, _ map[string]Option))
+					go hook(*sock.self, *ctx, nil)
 				}
 			} else {
 				log.Printf("ApplicationCommand (%s) is not implemented.", ctx.Data.Id)
