@@ -11,6 +11,7 @@ import (
 )
 
 var islocked = false
+var cachedGuilds = map[string]*Guild{}
 
 // Socket is a Discord websocket connection,
 // responsible for handling all ws events
@@ -25,7 +26,7 @@ type Socket struct {
 	interval     float64
 	presence     Presence
 	self         *BotUser
-	guilds       map[string]*Guild
+	secret       string
 	queue        []ApplicationCommand
 	eventHooks   map[string]interface{}
 	commandHooks map[string]interface{}
@@ -50,10 +51,10 @@ func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {
 	}
 }
 
-func (sock *Socket) identify(conn *websocket.Conn, token string, intent int) {
+func (sock *Socket) identify(conn *websocket.Conn, intent int) {
 
 	d := map[string]interface{}{
-		"token":   token,
+		"token":   sock.secret,
 		"intents": intent,
 	}
 	d["properties"] = map[string]string{
@@ -84,7 +85,7 @@ func (sock *Socket) AddToQueue(commands ...ApplicationCommand) {
 	}
 }
 
-func (sock *Socket) registerCommand(com ApplicationCommand, token string, applicationId string) {
+func (sock *Socket) registerCommand(com ApplicationCommand, applicationId string) {
 	var route string
 	data, hook, guildId := com.marshal()
 	if guildId != 0 {
@@ -92,7 +93,7 @@ func (sock *Socket) registerCommand(com ApplicationCommand, token string, applic
 	} else {
 		route = fmt.Sprintf("/applications/%s/commands", applicationId)
 	}
-	r := minimalReq("POST", route, data, token)
+	r := minimalReq("POST", route, data, sock.secret)
 	d := map[string]interface{}{}
 	body, _ := io.ReadAll(r.fire().Body)
 	_ = json.Unmarshal(body, &d)
@@ -112,12 +113,12 @@ func (sock *Socket) registerCommand(com ApplicationCommand, token string, applic
 		}
 	} else {
 		log.Fatal(
-			fmt.Sprintf("Failed to register command {%s}. Reason: %s", com.Name, d["message"]))
+			fmt.Sprintf("Failed to register command {%s}.\nMessage: %s", com.Name, d["message"]))
 	}
 }
 
 func (sock *Socket) Run(token string) {
-	sock.guilds = make(map[string]*Guild)
+	sock.secret = token
 	sock.commandHooks = make(map[string]interface{})
 	wss := sock.getGateway()
 	conn, _, err := websocket.DefaultDialer.Dial(wss, nil)
@@ -145,9 +146,12 @@ func (sock *Socket) Run(token string) {
 			ba, _ := json.Marshal(wsmsg.Data)
 			_ = json.Unmarshal(ba, &runtime)
 			for _, cmd := range sock.queue {
-				go sock.registerCommand(cmd, token, runtime.Application.Id)
+				go sock.registerCommand(cmd, runtime.Application.Id)
 			}
-			sock.self = unmarshalBot(wsmsg.Data["user"].(map[string]interface{}))
+			sock.self = Converter{
+				token:   sock.secret,
+				payload: wsmsg.Data["user"].(map[string]interface{}),
+			}.Bot()
 			sock.self.Latency = sock.latency
 			sock.self.IsReady = true
 			islocked = false
@@ -157,7 +161,7 @@ func (sock *Socket) Run(token string) {
 		}
 		if wsmsg.Op == 10 {
 			sock.interval = wsmsg.Data["heartbeat_interval"].(float64)
-			sock.identify(conn, token, sock.intent)
+			sock.identify(conn, sock.intent)
 			go sock.keepAlive(conn, int(sock.interval))
 		}
 		if wsmsg.Op == 11 {
@@ -178,7 +182,7 @@ func (sock *Socket) Run(token string) {
 			})
 		}
 		if wsmsg.Op == 9 {
-			sock.identify(conn, token, sock.intent)
+			sock.identify(conn, sock.intent)
 		}
 		sock.eventHandler(wsmsg.Event, wsmsg.Data)
 		if h, ok := sock.eventHooks[onSocketReceive]; ok {
@@ -186,48 +190,48 @@ func (sock *Socket) Run(token string) {
 			go handler(wsmsg.Data)
 		}
 		if wsmsg.Event == onGuildCreate {
-			gld := unmarshalGuild(wsmsg.Data)
-			gld.unmarshalRoles(wsmsg.Data["roles"].([]interface{}))
-			gld.unmarshalChannels(wsmsg.Data["channels"].([]interface{}))
-			sock.guilds[gld.Id] = gld
-			sock.self.Guilds = sock.guilds
+			g := Converter{token: token, payload: wsmsg.Data}.Guild()
+			g.unmarshalRoles(wsmsg.Data["roles"].([]interface{}))
+			g.unmarshalChannels(wsmsg.Data["channels"].([]interface{}))
+			cachedGuilds[g.Id] = g
+			sock.self.Guilds = cachedGuilds
 			if sock.memoize {
-				requestMembers(conn, gld.Id)
+				requestMembers(conn, g.Id)
 			}
 		}
 		if wsmsg.Event == "GUILD_MEMBERS_CHUNK" {
-			id := wsmsg.Data["guild_id"].(string)
-			sock.guilds[id].unmarshalMembers(wsmsg.Data["members"].([]interface{}))
+			cachedGuilds[wsmsg.Data["guild_id"].(string)].unmarshalMembers(wsmsg.Data["members"].([]interface{}))
 		}
 	}
 }
 
-func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
+func (sock *Socket) eventHandler(dispatch string, data map[string]interface{}) {
 	if islocked {
 		return
 	}
+	converter := Converter{token: sock.secret, payload: data}
 
-	switch event {
+	switch dispatch {
 
 	case onMessageCreate:
-		if event, ok := sock.eventHooks[event]; ok {
+		if event, ok := sock.eventHooks[dispatch]; ok {
 			hook := event.(func(bot BotUser, message Message))
-			go hook(*sock.self, *unmarshalMessage(data))
+			go hook(*sock.self, *converter.Message())
 		}
 
 	case onGuildCreate:
-		if event, ok := sock.eventHooks[event]; ok {
+		if event, ok := sock.eventHooks[dispatch]; ok {
 			hook := event.(func(bot BotUser, guild Guild))
-			go hook(*sock.self, *unmarshalGuild(data))
+			go hook(*sock.self, *converter.Guild())
 		}
 	case onGuildDelete:
-		if event, ok := sock.eventHooks[event]; ok {
-			guild := unmarshalGuild(data)
+		if event, ok := sock.eventHooks[dispatch]; ok {
+			guild := converter.Guild()
 			hook := event.(func(bot BotUser, guild Guild))
-			cached, exists := sock.guilds[guild.Id]
+			cached, exists := cachedGuilds[guild.Id]
 			if exists {
 				go hook(*sock.self, *cached)
-				delete(sock.guilds, guild.Id)
+				delete(cachedGuilds, guild.Id)
 			} else {
 				go hook(*sock.self, *guild)
 			}
@@ -235,7 +239,7 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 	case onInteractionCreate:
 		ctx := unmarshalContext(data)
 		ctx.raw = data
-		if event, ok := sock.eventHooks[event]; ok {
+		if event, ok := sock.eventHooks[dispatch]; ok {
 			hook := event.(func(bot BotUser, ctx Context))
 			go hook(*sock.self, *ctx)
 		}
@@ -280,14 +284,14 @@ func (sock *Socket) eventHandler(event string, data map[string]interface{}) {
 					}
 				case 2:
 					target := ctx.Data.TargetId
-					resolvedUserData := ctx.Data.Resolved["users"].(map[string]interface{})[target]
-					ctx.TargetUser = *unmarshalUser(resolvedUserData)
+					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
+					ctx.TargetUser = *Converter{token: sock.secret, payload: rud.(map[string]interface{})}.User()
 					hook := task.(func(bot BotUser, ctx Context, _ map[string]Option))
 					go hook(*sock.self, *ctx, nil)
 				case 3:
 					target := ctx.Data.TargetId
-					resolvedMessageData := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
-					ctx.TargetMessage = *unmarshalMessage(resolvedMessageData)
+					rmd := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
+					ctx.TargetMessage = *Converter{token: sock.secret, payload: rmd.(map[string]interface{})}.Message()
 					hook := task.(func(bot BotUser, ctx Context, _ map[string]Option))
 					go hook(*sock.self, *ctx, nil)
 				}

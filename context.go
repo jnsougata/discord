@@ -169,13 +169,28 @@ type Context struct {
 	componentData  ComponentData
 	commandData    []Option
 	raw            map[string]interface{}
+	Channel        Channel
+	Guild          Guild
 }
 
 func unmarshalContext(payload interface{}) *Context {
-	c := &Context{}
+	ctx := &Context{}
 	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, c)
-	return c
+	_ = json.Unmarshal(data, ctx)
+	guild, okg := cachedGuilds[ctx.GuildId]
+	if okg {
+		ctx.Guild = *guild
+		channel, okc := guild.Channels[ctx.ChannelId]
+		if okc {
+			ctx.Channel = channel
+		} else {
+			ctx.Channel = Channel{}
+		}
+	} else {
+		ctx.Guild = Guild{}
+		ctx.Channel = Channel{}
+	}
+	return ctx
 }
 
 func (c *Context) OriginalResponse() Message {

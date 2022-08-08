@@ -53,12 +53,13 @@ type Guild struct {
 	StageInstances              []map[string]interface{} `json:"stage_instances"`
 	Unavailable                 bool                     `json:"unavailable"`
 	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
+	token                       string
 }
 
 func (guild *Guild) unmarshalMembers(objs []interface{}) {
 	var members = map[string]Member{}
 	for _, o := range objs {
-		uo := unmarshalMember(o)
+		uo := Converter{payload: o, token: guild.token}.Member()
 		uo.GuildId = guild.Id
 		members[uo.User.Id] = *uo
 	}
@@ -68,7 +69,7 @@ func (guild *Guild) unmarshalMembers(objs []interface{}) {
 func (guild *Guild) unmarshalRoles(objs []interface{}) {
 	var roles = map[string]Role{}
 	for _, o := range objs {
-		uo := unmarshalRole(o)
+		uo := Converter{payload: o, token: guild.token}.Role()
 		uo.GuildId = guild.Id
 		roles[uo.Id] = *uo
 	}
@@ -78,7 +79,7 @@ func (guild *Guild) unmarshalRoles(objs []interface{}) {
 func (guild *Guild) unmarshalChannels(objs []interface{}) {
 	var chs = map[string]Channel{}
 	for _, o := range objs {
-		uo := unmarshalChannel(o)
+		uo := Converter{payload: o, token: guild.token}.Channel()
 		chs[uo.Id] = *uo
 	}
 	guild.Channels = chs

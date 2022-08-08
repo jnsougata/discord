@@ -1,5 +1,11 @@
 package disgo
 
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+)
+
 // Channel represents a Discord channel of any type
 type Channel struct {
 	Id                         string        `json:"id"`
@@ -29,4 +35,15 @@ type Channel struct {
 	Permissions                string        `json:"permissions"`
 	Flags                      int           `json:"flags"`
 	TotalMessages              int           `json:"total_messages"`
+	token                      string
+}
+
+func (c *Channel) Send(draft Draft) Message {
+	body := draft.marshal()
+	path := fmt.Sprintf("/channels/%s/messages", c.Id)
+	r := multipartReq("POST", path, body, c.token, draft.Files...)
+	bs, _ := io.ReadAll(r.fire().Body)
+	var m Message
+	_ = json.Unmarshal(bs, &m)
+	return m
 }
