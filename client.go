@@ -3,11 +3,11 @@ package disgo
 // Bot is a function that represents a connection to discord.
 func Bot(intent Intent, cache bool, presence Presence) *connection {
 	return &connection{
-		sock: &Socket{intent: int(intent), memoize: cache, presence: presence}}
+		sock: &ws{intent: int(intent), memoize: cache, presence: presence}}
 }
 
 type connection struct {
-	sock *Socket
+	sock *ws
 }
 
 func (con *connection) Run(token string) {

@@ -54,10 +54,7 @@ type minimalRouter struct {
 func (obj *minimalRouter) fire() *http.Response {
 	body, _ := json.Marshal(obj.Data)
 	reader := io.NopCloser(bytes.NewBuffer(body))
-	if obj.Method == "DELETE" {
-		reader = nil
-	}
-	if obj.Method == "GET" {
+	if obj.Method == "DELETE" || obj.Method == "GET" {
 		reader = nil
 	}
 	r, _ := http.NewRequest(obj.Method, root+obj.Path, reader)

@@ -1,6 +1,8 @@
 package disgo
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type Converter struct {
 	token   string
@@ -18,6 +20,7 @@ func (c Converter) Message() *Message {
 	msg := &Message{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, msg)
+	msg.token = c.token
 	return msg
 }
 

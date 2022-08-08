@@ -13,9 +13,9 @@ import (
 var islocked = false
 var cachedGuilds = map[string]*Guild{}
 
-// Socket is a Discord websocket connection,
+// ws is a Discord websocket connection,
 // responsible for handling all ws events
-type Socket struct {
+type ws struct {
 	sequence     int
 	intent       int
 	memoize      bool
@@ -32,7 +32,7 @@ type Socket struct {
 	commandHooks map[string]interface{}
 }
 
-func (sock *Socket) getGateway() string {
+func (sock *ws) getGateway() string {
 	data, err := http.Get("https://discord.com/api/gateway")
 	if err != nil {
 		panic(err)
@@ -43,7 +43,7 @@ func (sock *Socket) getGateway() string {
 	return fmt.Sprintf("%s?v=%s&encoding=json", payload["url"], "10")
 }
 
-func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {
+func (sock *ws) keepAlive(conn *websocket.Conn, dur int) {
 	for {
 		_ = conn.WriteJSON(map[string]interface{}{"op": 1, "d": 251})
 		sock.beatSent = time.Now().UnixMilli()
@@ -51,7 +51,7 @@ func (sock *Socket) keepAlive(conn *websocket.Conn, dur int) {
 	}
 }
 
-func (sock *Socket) identify(conn *websocket.Conn, intent int) {
+func (sock *ws) identify(conn *websocket.Conn, intent int) {
 
 	d := map[string]interface{}{
 		"token":   sock.secret,
@@ -72,20 +72,20 @@ func (sock *Socket) identify(conn *websocket.Conn, intent int) {
 	_ = conn.WriteJSON(payload)
 }
 
-func (sock *Socket) AddHandler(name string, handler interface{}) {
+func (sock *ws) AddHandler(name string, handler interface{}) {
 	if sock.eventHooks == nil {
 		sock.eventHooks = make(map[string]interface{})
 	}
 	sock.eventHooks[name] = handler
 }
 
-func (sock *Socket) AddToQueue(commands ...ApplicationCommand) {
+func (sock *ws) AddToQueue(commands ...ApplicationCommand) {
 	for _, com := range commands {
 		sock.queue = append(sock.queue, com)
 	}
 }
 
-func (sock *Socket) registerCommand(com ApplicationCommand, applicationId string) {
+func (sock *ws) registerCommand(com ApplicationCommand, applicationId string) {
 	var route string
 	data, hook, guildId := com.marshal()
 	if guildId != 0 {
@@ -117,7 +117,7 @@ func (sock *Socket) registerCommand(com ApplicationCommand, applicationId string
 	}
 }
 
-func (sock *Socket) Run(token string) {
+func (sock *ws) Run(token string) {
 	sock.secret = token
 	sock.commandHooks = make(map[string]interface{})
 	wss := sock.getGateway()
@@ -205,7 +205,7 @@ func (sock *Socket) Run(token string) {
 	}
 }
 
-func (sock *Socket) eventHandler(dispatch string, data map[string]interface{}) {
+func (sock *ws) eventHandler(dispatch string, data map[string]interface{}) {
 	if islocked {
 		return
 	}

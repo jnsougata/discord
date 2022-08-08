@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
 )
 
 // Channel represents a Discord channel of any type
@@ -45,5 +46,12 @@ func (c *Channel) Send(draft Draft) Message {
 	bs, _ := io.ReadAll(r.fire().Body)
 	var m Message
 	_ = json.Unmarshal(bs, &m)
+	m.token = c.token
+	if draft.DeleteAfter > 0 {
+		go func() {
+			time.Sleep(time.Second * time.Duration(draft.DeleteAfter))
+			m.Delete()
+		}()
+	}
 	return m
 }

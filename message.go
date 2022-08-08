@@ -1,5 +1,12 @@
 package disgo
 
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"time"
+)
+
 type Message struct {
 	Id                 string                   `json:"id"`
 	ChannelId          string                   `json:"channel_id"`
@@ -28,4 +35,28 @@ type Message struct {
 	Thread             map[string]interface{}   `json:"thread"`
 	Components         []map[string]interface{} `json:"components"`
 	Stickers           []map[string]interface{} `json:"sticker_items"`
+	token              string
+}
+
+func (m *Message) Reply(draft Draft) Message {
+	body := draft.marshal()
+	body["message_reference"] = map[string]interface{}{"message_id": m.Id}
+	path := fmt.Sprintf("/channels/%s/messages", m.ChannelId)
+	r := multipartReq("POST", path, body, m.token, draft.Files...)
+	bs, _ := io.ReadAll(r.fire().Body)
+	var msg Message
+	_ = json.Unmarshal(bs, &msg)
+	msg.token = m.token
+	if draft.DeleteAfter > 0 {
+		go func() {
+			time.Sleep(time.Second * time.Duration(draft.DeleteAfter))
+			msg.Delete()
+		}()
+	}
+	return msg
+}
+
+func (m *Message) Delete() {
+	path := fmt.Sprintf("/channels/%s/messages/%s", m.ChannelId, m.Id)
+	go minimalReq("DELETE", path, nil, m.token).fire()
 }

@@ -11,6 +11,7 @@ type Draft struct {
 	Files          []File
 	SuppressEmbeds bool
 	Reference      any
+	DeleteAfter    float64
 }
 
 func (d *Draft) marshal() map[string]interface{} {
