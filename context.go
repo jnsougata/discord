@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 )
 
 type Component struct {
@@ -166,11 +167,12 @@ type Context struct {
 	GuildLocale    string `json:"guild_locale"`
 	TargetUser     User
 	TargetMessage  Message
-	componentData  ComponentData
-	commandData    []Option
-	raw            map[string]interface{}
 	Channel        Channel
 	Guild          Guild
+	token          string
+	commandData    []Option
+	componentData  ComponentData
+	raw            map[string]interface{}
 }
 
 func unmarshalContext(payload interface{}) *Context {
@@ -189,6 +191,21 @@ func unmarshalContext(payload interface{}) *Context {
 	} else {
 		ctx.Guild = Guild{}
 		ctx.Channel = Channel{}
+	}
+	converter := Converter{token: ctx.token}
+	userData := payload.(map[string]interface{})["user"]
+	memberData := payload.(map[string]interface{})["member"]
+	if reflect.TypeOf(userData) != nil {
+		converter.payload = userData.(map[string]interface{})
+		ctx.User = *converter.User()
+	}
+	if reflect.TypeOf(memberData) != nil {
+		converter.payload = memberData.(map[string]interface{})
+		member := *converter.Member()
+		converter.payload = memberData.(map[string]interface{})["user"].(map[string]interface{})
+		ctx.User = *converter.User()
+		member.fillUser(&ctx.User)
+		ctx.Member = member
 	}
 	return ctx
 }

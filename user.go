@@ -4,11 +4,9 @@ type User struct {
 	Id            string `json:"id"`
 	Username      string `json:"username"`
 	Discriminator string `json:"discriminator"`
-	Avatar        string `json:"avatar"`
 	Bot           bool   `json:"bot"`
 	System        bool   `json:"system"`
 	MfaEnabled    bool   `json:"mfa_enabled"`
-	Banner        string `json:"banner"`
 	Color         int    `json:"accent_color"`
 	Locale        string `json:"locale"`
 	Verified      bool   `json:"verified"`
@@ -16,4 +14,7 @@ type User struct {
 	Flags         int    `json:"flags"`
 	PremiumType   int    `json:"premium_type"`
 	PublicFlags   int    `json:"public_flags"`
+	token         string
+	Avatar        Asset
+	Banner        Asset
 }

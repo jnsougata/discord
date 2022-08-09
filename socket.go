@@ -191,8 +191,6 @@ func (sock *ws) Run(token string) {
 		}
 		if wsmsg.Event == onGuildCreate {
 			g := Converter{token: token, payload: wsmsg.Data}.Guild()
-			g.unmarshalRoles(wsmsg.Data["roles"].([]interface{}))
-			g.unmarshalChannels(wsmsg.Data["channels"].([]interface{}))
 			cachedGuilds[g.Id] = g
 			sock.self.Guilds = cachedGuilds
 			if sock.memoize {
@@ -239,6 +237,7 @@ func (sock *ws) eventHandler(dispatch string, data map[string]interface{}) {
 	case onInteractionCreate:
 		ctx := unmarshalContext(data)
 		ctx.raw = data
+		ctx.token = sock.secret
 		if event, ok := sock.eventHooks[dispatch]; ok {
 			hook := event.(func(bot BotUser, ctx Context))
 			go hook(*sock.self, *ctx)

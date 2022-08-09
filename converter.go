@@ -2,6 +2,8 @@ package disgo
 
 import (
 	"encoding/json"
+	"reflect"
+	"strconv"
 )
 
 type Converter struct {
@@ -25,10 +27,38 @@ func (c Converter) Message() *Message {
 }
 
 func (c Converter) Guild() *Guild {
+	raw := c.payload.(map[string]interface{})
+	iconHash := raw["icon"]
+	bannerHash := raw["banner"]
+	splashHash := raw["splash"]
+	dSplashHash := raw["discovery_splash"]
 	guild := &Guild{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, guild)
 	guild.token = c.token
+	guild.unmarshalRoles(raw["roles"].([]interface{}))
+	guild.unmarshalChannels(raw["channels"].([]interface{}))
+	asset := &Asset{Format: "png", Size: 1024}
+	if reflect.TypeOf(iconHash) != nil {
+		asset.Extras = "icons/" + guild.Id
+		asset.Hash = iconHash.(string)
+		guild.Icon = *asset
+	}
+	if reflect.TypeOf(splashHash) != nil {
+		asset.Extras = "splashes/" + guild.Id
+		asset.Hash = splashHash.(string)
+		guild.Splash = *asset
+	}
+	if reflect.TypeOf(bannerHash) != nil {
+		asset.Extras = "banners/" + guild.Id
+		asset.Hash = bannerHash.(string)
+		guild.Banner = *asset
+	}
+	if reflect.TypeOf(dSplashHash) != nil {
+		asset.Extras = "discovery_splashes/" + guild.Id
+		asset.Hash = dSplashHash.(string)
+		guild.DiscoverySplash = *asset
+	}
 	return guild
 }
 
@@ -36,6 +66,15 @@ func (c Converter) Member() *Member {
 	m := &Member{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, m)
+	m.token = c.token
+	u := Converter{payload: c.payload.(map[string]interface{})["user"], token: c.token}.User()
+	m.fillUser(u)
+	avatarHash := c.payload.(map[string]interface{})["avatar"]
+	if reflect.TypeOf(avatarHash) != nil {
+		m.Avatar = Asset{Hash: avatarHash.(string), Format: "png", Size: 1024, Extras: "avatars/" + m.Id}
+	} else {
+		m.Avatar = u.Avatar
+	}
 	return m
 }
 
@@ -43,6 +82,19 @@ func (c Converter) User() *User {
 	u := &User{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, u)
+	u.token = c.token
+	avatarHash := c.payload.(map[string]interface{})["avatar"]
+	bannerHash := c.payload.(map[string]interface{})["banner"]
+	if reflect.TypeOf(avatarHash) != nil {
+		u.Avatar = Asset{Hash: avatarHash.(string), Format: "png", Size: 1024, Extras: "avatars/" + u.Id}
+	} else {
+		discmInt, _ := strconv.Atoi(u.Discriminator)
+		hash := strconv.Itoa(discmInt % 5)
+		u.Avatar = Asset{Hash: hash, Format: "png", Size: 1024, Extras: "embed/avatars"}
+	}
+	if reflect.TypeOf(bannerHash) != nil {
+		u.Banner = Asset{Hash: bannerHash.(string), Format: "png", Size: 1024, Extras: "banners/" + u.Id}
+	}
 	return u
 }
 

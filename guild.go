@@ -3,10 +3,6 @@ package disgo
 type Guild struct {
 	Id                          string                   `json:"id"`
 	Name                        string                   `json:"name"`
-	Icon                        string                   `json:"icon"`
-	IconHash                    string                   `json:"icon_hash"`
-	Splash                      string                   `json:"splash"`
-	DiscoverySplash             string                   `json:"discovery_splash"`
 	Owner                       bool                     `json:"owner"`
 	OwnerID                     string                   `json:"owner_id"`
 	Permissions                 string                   `json:"permissions"`
@@ -18,7 +14,6 @@ type Guild struct {
 	VerificationLevel           int                      `json:"verification_level"`
 	DefaultMessageNotifications int                      `json:"default_message_notifications"`
 	ExplicitContentFilter       int                      `json:"explicit_content_filter"`
-	Roles                       map[string]Role          `json:"x_roles"`
 	Emojis                      []Emoji                  `json:"emojis"`
 	Features                    []string                 `json:"features"`
 	MFALevel                    int                      `json:"mfa_level"`
@@ -30,7 +25,6 @@ type Guild struct {
 	MaxMembers                  int                      `json:"max_members"`
 	VanityURLCode               string                   `json:"vanity_url_code"`
 	Description                 string                   `json:"description"`
-	Banner                      string                   `json:"banner"`
 	PremiumTier                 int                      `json:"premium_tier"`
 	PremiumSubscriptionCount    int                      `json:"premium_subscription_count"`
 	PreferredLocale             string                   `json:"preferred_locale"`
@@ -42,8 +36,6 @@ type Guild struct {
 	NSFWLevel                   int                      `json:"nsfw_level"`
 	Stickers                    map[string]interface{}   `json:"stickers"`
 	PremiumProgressBarEnabled   bool                     `json:"premium_progress_bar_enabled"`
-	Members                     map[string]Member        `json:"x_members"`
-	Channels                    map[string]Channel       `json:"x_channels"`
 	JoinedAT                    string                   `json:"joined_at"`
 	Large                       bool                     `json:"large"`
 	MemberCount                 int                      `json:"member_count"`
@@ -54,6 +46,13 @@ type Guild struct {
 	Unavailable                 bool                     `json:"unavailable"`
 	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
 	token                       string
+	Icon                        Asset
+	Banner                      Asset
+	Splash                      Asset //    `json:"splash"`
+	DiscoverySplash             Asset //    `json:"discovery_splash"`
+	Members                     map[string]Member
+	Channels                    map[string]Channel
+	Roles                       map[string]Role
 }
 
 func (guild *Guild) unmarshalMembers(objs []interface{}) {
@@ -61,7 +60,7 @@ func (guild *Guild) unmarshalMembers(objs []interface{}) {
 	for _, o := range objs {
 		uo := Converter{payload: o, token: guild.token}.Member()
 		uo.GuildId = guild.Id
-		members[uo.User.Id] = *uo
+		members[uo.Id] = *uo
 	}
 	guild.Members = members
 }
