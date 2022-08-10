@@ -51,24 +51,30 @@ type Guild struct {
 	Banner                      Asset
 	Splash                      Asset //    `json:"splash"`
 	DiscoverySplash             Asset //    `json:"discovery_splash"`
+	Me                          *Member
+	Roles                       map[string]*Role
 	Members                     map[string]*Member
 	Channels                    map[string]*Channel
-	Roles                       map[string]*Role
-	Me                          *Member
 }
 
-func (guild *Guild) unmarshalMembers(objs []interface{}) {
+func (guild *Guild) fillMembers(objs []interface{}) {
 	var members = map[string]*Member{}
 	for _, o := range objs {
-		uo := Converter{payload: o, token: guild.token}.Member()
-		uo.GuildId = guild.Id
-		members[uo.Id] = uo
+		mo := Converter{payload: o, token: guild.token}.Member()
+		mo.GuildId = guild.Id
+		roleIds := o.(map[string]interface{})["roles"].([]interface{})
+		roles := map[string]*Role{}
+		for _, roleId := range roleIds {
+			roles[roleId.(string)] = guild.Roles[roleId.(string)]
+		}
+		mo.Roles = roles
+		members[mo.Id] = mo
 	}
 	guild.Members = members
 	guild.Me = guild.Members[guild.clientId]
 }
 
-func (guild *Guild) unmarshalRoles(objs []interface{}) {
+func (guild *Guild) fillRoles(objs []interface{}) {
 	var roles = map[string]*Role{}
 	for _, o := range objs {
 		uo := Converter{payload: o, token: guild.token}.Role()
@@ -78,7 +84,7 @@ func (guild *Guild) unmarshalRoles(objs []interface{}) {
 	guild.Roles = roles
 }
 
-func (guild *Guild) unmarshalChannels(objs []interface{}) {
+func (guild *Guild) fillChannels(objs []interface{}) {
 	var channels = map[string]*Channel{}
 	for _, o := range objs {
 		uo := Converter{payload: o, token: guild.token}.Channel()

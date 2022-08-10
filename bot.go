@@ -15,4 +15,5 @@ type BotUser struct {
 	Latency       int64  `json:"latency"`
 	IsReady       bool
 	Guilds        map[string]*Guild
+	Users         map[string]*User
 }

@@ -12,6 +12,7 @@ import (
 
 var islocked = false
 var cachedGuilds = map[string]*Guild{}
+var cachedUsers = map[string]*User{}
 
 // ws is a Discord websocket connection,
 // responsible for handling all ws events
@@ -199,7 +200,10 @@ func (sock *ws) Run(token string) {
 			}
 		}
 		if wsmsg.Event == "GUILD_MEMBERS_CHUNK" {
-			cachedGuilds[wsmsg.Data["guild_id"].(string)].unmarshalMembers(wsmsg.Data["members"].([]interface{}))
+			id := wsmsg.Data["guild_id"].(string)
+			members := wsmsg.Data["members"].([]interface{})
+			cachedGuilds[id].fillMembers(members)
+			sock.self.Users = cachedUsers
 		}
 	}
 }
@@ -236,7 +240,7 @@ func (sock *ws) eventHandler(dispatch string, data map[string]interface{}) {
 			}
 		}
 	case onInteractionCreate:
-		ctx := unmarshalContext(data)
+		ctx := createContext(data)
 		ctx.raw = data
 		ctx.token = sock.secret
 		if event, ok := sock.eventHooks[dispatch]; ok {

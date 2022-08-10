@@ -158,7 +158,6 @@ type Context struct {
 	Data           Data   `json:"data"`
 	GuildId        string `json:"guild_id"`
 	ChannelId      string `json:"channel_id"`
-	Author         Member `json:"member"`
 	User           User   `json:"user"`
 	Token          string `json:"token"`
 	Version        int    `json:"version"`
@@ -169,13 +168,14 @@ type Context struct {
 	TargetMessage  Message
 	Channel        Channel
 	Guild          Guild
+	Author         Member
 	token          string
 	commandData    []Option
 	componentData  ComponentData
 	raw            map[string]interface{}
 }
 
-func unmarshalContext(payload interface{}) *Context {
+func createContext(payload interface{}) *Context {
 	ctx := &Context{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, ctx)
@@ -200,9 +200,8 @@ func unmarshalContext(payload interface{}) *Context {
 		ctx.User = *converter.User()
 	}
 	if reflect.TypeOf(memberData) != nil {
-		converter.payload = memberData.(map[string]interface{})
-		member := *converter.Member()
-		ctx.Author = member
+		id := memberData.(map[string]interface{})["user"].(map[string]interface{})["id"].(string)
+		ctx.Author = *guild.Members[id]
 	}
 	return ctx
 }

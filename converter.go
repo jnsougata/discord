@@ -36,8 +36,8 @@ func (c Converter) Guild() *Guild {
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, guild)
 	guild.token = c.token
-	guild.unmarshalRoles(raw["roles"].([]interface{}))
-	guild.unmarshalChannels(raw["channels"].([]interface{}))
+	guild.fillRoles(raw["roles"].([]interface{}))
+	guild.fillChannels(raw["channels"].([]interface{}))
 	asset := &Asset{Format: "png", Size: 1024}
 	if reflect.TypeOf(iconHash) != nil {
 		asset.Extras = "icons/" + guild.Id
@@ -68,6 +68,7 @@ func (c Converter) Member() *Member {
 	_ = json.Unmarshal(data, m)
 	m.token = c.token
 	u := Converter{payload: c.payload.(map[string]interface{})["user"], token: c.token}.User()
+	cachedUsers[u.Id] = u
 	m.fillUser(u)
 	avatarHash := c.payload.(map[string]interface{})["avatar"]
 	if reflect.TypeOf(avatarHash) != nil {
