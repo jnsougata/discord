@@ -191,6 +191,7 @@ func (sock *ws) Run(token string) {
 		}
 		if wsmsg.Event == onGuildCreate {
 			g := Converter{token: token, payload: wsmsg.Data}.Guild()
+			g.clientId = sock.self.Id
 			cachedGuilds[g.Id] = g
 			sock.self.Guilds = cachedGuilds
 			if sock.memoize {

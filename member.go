@@ -1,7 +1,8 @@
 package disgo
 
+import "strconv"
+
 type Member struct {
-	//User          User     `json:"user"`
 	Nickname      string   `json:"nick"`
 	AvatarHash    string   `json:"avatar"`
 	Roles         []string `json:"roles"`
@@ -10,7 +11,7 @@ type Member struct {
 	Deaf          bool     `json:"deaf"`
 	Mute          bool     `json:"mute"`
 	Pending       bool     `json:"pending"`
-	Permissions   int      `json:"permissions"`
+	Permissions   string   `json:"permissions"`
 	TimeoutExpiry string   `json:"communication_disabled_until"`
 	GuildId       string   `json:"guild_id"`
 	token         string
@@ -40,4 +41,9 @@ func (m *Member) fillUser(u *User) {
 	m.System = u.System
 	m.MfaEnabled = u.MfaEnabled
 	m.Banner = u.Banner
+}
+
+func (m *Member) HasPermissions(permissions ...Permission) bool {
+	total, _ := strconv.Atoi(m.Permissions)
+	return Permissions().check(Permission(total), permissions...)
 }

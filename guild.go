@@ -46,40 +46,43 @@ type Guild struct {
 	Unavailable                 bool                     `json:"unavailable"`
 	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
 	token                       string
+	clientId                    string
 	Icon                        Asset
 	Banner                      Asset
 	Splash                      Asset //    `json:"splash"`
 	DiscoverySplash             Asset //    `json:"discovery_splash"`
-	Members                     map[string]Member
-	Channels                    map[string]Channel
-	Roles                       map[string]Role
+	Members                     map[string]*Member
+	Channels                    map[string]*Channel
+	Roles                       map[string]*Role
+	Me                          *Member
 }
 
 func (guild *Guild) unmarshalMembers(objs []interface{}) {
-	var members = map[string]Member{}
+	var members = map[string]*Member{}
 	for _, o := range objs {
 		uo := Converter{payload: o, token: guild.token}.Member()
 		uo.GuildId = guild.Id
-		members[uo.Id] = *uo
+		members[uo.Id] = uo
 	}
 	guild.Members = members
+	guild.Me = guild.Members[guild.clientId]
 }
 
 func (guild *Guild) unmarshalRoles(objs []interface{}) {
-	var roles = map[string]Role{}
+	var roles = map[string]*Role{}
 	for _, o := range objs {
 		uo := Converter{payload: o, token: guild.token}.Role()
 		uo.GuildId = guild.Id
-		roles[uo.Id] = *uo
+		roles[uo.Id] = uo
 	}
 	guild.Roles = roles
 }
 
 func (guild *Guild) unmarshalChannels(objs []interface{}) {
-	var chs = map[string]Channel{}
+	var channels = map[string]*Channel{}
 	for _, o := range objs {
 		uo := Converter{payload: o, token: guild.token}.Channel()
-		chs[uo.Id] = *uo
+		channels[uo.Id] = uo
 	}
-	guild.Channels = chs
+	guild.Channels = channels
 }

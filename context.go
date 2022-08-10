@@ -158,7 +158,7 @@ type Context struct {
 	Data           Data   `json:"data"`
 	GuildId        string `json:"guild_id"`
 	ChannelId      string `json:"channel_id"`
-	Member         Member `json:"member"`
+	Author         Member `json:"member"`
 	User           User   `json:"user"`
 	Token          string `json:"token"`
 	Version        int    `json:"version"`
@@ -184,7 +184,7 @@ func unmarshalContext(payload interface{}) *Context {
 		ctx.Guild = *guild
 		channel, okc := guild.Channels[ctx.ChannelId]
 		if okc {
-			ctx.Channel = channel
+			ctx.Channel = *channel
 		} else {
 			ctx.Channel = Channel{}
 		}
@@ -202,10 +202,7 @@ func unmarshalContext(payload interface{}) *Context {
 	if reflect.TypeOf(memberData) != nil {
 		converter.payload = memberData.(map[string]interface{})
 		member := *converter.Member()
-		converter.payload = memberData.(map[string]interface{})["user"].(map[string]interface{})
-		ctx.User = *converter.User()
-		member.fillUser(&ctx.User)
-		ctx.Member = member
+		ctx.Author = member
 	}
 	return ctx
 }
