@@ -1,4 +1,4 @@
-# disgo
+# discord
 
 
 # Quick Example
