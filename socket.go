@@ -60,8 +60,8 @@ func (sock *ws) identify(conn *websocket.Conn, intent int) {
 	}
 	d["properties"] = map[string]string{
 		"os":      "linux",
-		"browser": "disgo",
-		"device":  "disgo",
+		"browser": "discord",
+		"device":  "discord",
 	}
 	if sock.presence.Activity.Name != "" {
 		d["presence"] = sock.presence.Marshal()
