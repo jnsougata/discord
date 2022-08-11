@@ -10,28 +10,28 @@ import (
 	"time"
 )
 
-var islocked = false
-var cachedGuilds = map[string]*Guild{}
-var cachedUsers = map[string]*User{}
+var s = state{}
 
 type ws struct {
-	sequence  int
-	intent    int
-	memoize   bool
-	beatSent  int64
-	beatAck   int64
-	latency   int64
-	sessionId string
-	interval  float64
-	presence  Presence
-	self      *BotUser
-	secret    string
-	queue     []ApplicationCommand
-	commands  map[string]interface{}
-	listeners Listeners
+	locked     bool
+	sequence   int
+	intent     int
+	memoize    bool
+	beatSent   int64
+	beatAck    int64
+	latency    int64
+	sessionId  string
+	interval   float64
+	presence   Presence
+	self       *BotUser
+	secret     string
+	queue      []ApplicationCommand
+	commands   map[string]interface{}
+	listeners  Listeners
+	lazyGuilds map[string]bool
 }
 
-func (sock *ws) getGateway() string {
+func (sock *ws) gateway() string {
 	data, err := http.Get("https://discord.com/api/gateway")
 	if err != nil {
 		panic(err)
@@ -115,9 +115,9 @@ func (sock *ws) requestMembers(conn *websocket.Conn, guildId string) {
 }
 
 func (sock *ws) run(token string) {
-	sock.commands = make(map[string]interface{})
-	wss := sock.getGateway()
-	conn, _, err := websocket.DefaultDialer.Dial(wss, nil)
+	s.Guilds = make(map[string]*Guild)
+	s.Users = make(map[string]*User)
+	conn, _, err := websocket.DefaultDialer.Dial(sock.gateway(), nil)
 	if err != nil {
 		log.Println(err)
 	}
@@ -129,21 +129,29 @@ func (sock *ws) run(token string) {
 			Data     map[string]interface{} `json:"d"`
 		}
 		_ = conn.ReadJSON(&wsmsg)
-		var runtime struct {
-			SessionId   string `json:"session_id"`
-			Sequence    int
-			Application struct {
-				Id    string  `json:"id"`
-				Flags float64 `json:"flags"`
-			} `json:"application"`
-		}
 		sock.sequence = wsmsg.Sequence
-
+		if sock.listeners.OnSocketReceive != nil {
+			go sock.listeners.OnSocketReceive(wsmsg)
+		}
 		switch wsmsg.Event {
 
 		case string(OnReady):
+			sock.lazyGuilds = map[string]bool{}
+			var runtime struct {
+				SessionId   string `json:"session_id"`
+				Sequence    int
+				Application struct {
+					Id    string  `json:"id"`
+					Flags float64 `json:"flags"`
+				} `json:"application"`
+				Guilds interface{} `json:"guilds"`
+			}
 			ba, _ := json.Marshal(wsmsg.Data)
 			_ = json.Unmarshal(ba, &runtime)
+			for _, guild := range runtime.Guilds.([]interface{}) {
+				id := guild.(map[string]interface{})["id"].(string)
+				sock.lazyGuilds[id] = true
+			}
 			for _, cmd := range sock.queue {
 				go sock.registerCommand(cmd, runtime.Application.Id)
 			}
@@ -152,24 +160,27 @@ func (sock *ws) run(token string) {
 				payload: wsmsg.Data["user"].(map[string]interface{}),
 			}.Bot()
 			sock.self.Latency = sock.latency
-			sock.self.IsReady = true
-			islocked = false
+			sock.locked = false
 			if sock.listeners.OnReady != nil {
 				go sock.listeners.OnReady(*sock.self)
 			}
 		case string(OnGuildJoin):
 			g := Converter{token: token, payload: wsmsg.Data}.Guild()
 			g.clientId = sock.self.Id
-			cachedGuilds[g.Id] = g
-			sock.self.Guilds = cachedGuilds
+			s.Guilds[g.Id] = g
+			sock.self.Guilds = s.Guilds
 			if sock.memoize {
 				sock.requestMembers(conn, g.Id)
+			}
+			_, ok := sock.lazyGuilds[g.Id]
+			if !ok && sock.listeners.OnGuildJoin != nil {
+				go sock.listeners.OnGuildJoin(*sock.self, *g)
 			}
 		case string(OnGuildMembersChunk):
 			id := wsmsg.Data["guild_id"].(string)
 			members := wsmsg.Data["members"].([]interface{})
-			cachedGuilds[id].fillMembers(members)
-			sock.self.Users = cachedUsers
+			s.Guilds[id].fillMembers(members)
+			sock.self.Users = s.Users
 		default:
 			sock.processEvents(wsmsg.Event, wsmsg.Data)
 		}
@@ -202,33 +213,37 @@ func (sock *ws) run(token string) {
 }
 
 func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
-	if islocked {
+	if sock.locked {
 		return
 	}
-	converter := Converter{token: sock.secret, payload: data}
+	conv := Converter{token: sock.secret, payload: data}
 
 	switch dispatch {
 
 	case string(OnMessage):
 		if sock.listeners.OnMessage != nil {
-			go sock.listeners.OnMessage(*sock.self, *converter.Message())
+			go sock.listeners.OnMessage(*sock.self, *conv.Message())
 		}
 
-	case string(OnGuildJoin):
-		if sock.listeners.OnGuildJoin != nil {
-			go sock.listeners.OnGuildJoin(*sock.self, *converter.Guild())
-		}
 	case string(OnGuildLeave):
+		id := data["id"].(string)
+		_, ok := sock.lazyGuilds[id]
+		if ok {
+			delete(sock.lazyGuilds, id)
+		}
 		if sock.listeners.OnGuildLeave != nil {
-			guild := converter.Guild()
-			cached, exists := cachedGuilds[guild.Id]
+			cached, exists := s.Guilds[id]
 			if exists {
 				go sock.listeners.OnGuildLeave(*sock.self, *cached)
-				delete(cachedGuilds, guild.Id)
+				delete(s.Guilds, id)
 			} else {
-				go sock.listeners.OnGuildLeave(*sock.self, *guild)
+				var guild Guild
+				md, _ := json.Marshal(data)
+				_ = json.Unmarshal(md, &guild)
+				go sock.listeners.OnGuildLeave(*sock.self, guild)
 			}
 		}
+
 	case string(OnInteraction):
 		ctx := createContext(data)
 		ctx.raw = data
@@ -291,6 +306,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 			} else {
 				log.Printf("ApplicationCommand (%s) is not implemented.", ctx.Data.Id)
 			}
+
 		case 3:
 			var compdata ComponentData
 			da, _ := json.Marshal(data["data"].(map[string]interface{}))

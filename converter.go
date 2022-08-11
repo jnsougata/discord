@@ -68,7 +68,7 @@ func (c Converter) Member() *Member {
 	_ = json.Unmarshal(data, m)
 	m.token = c.token
 	u := Converter{payload: c.payload.(map[string]interface{})["user"], token: c.token}.User()
-	cachedUsers[u.Id] = u
+	s.Users[u.Id] = u
 	m.fillUser(u)
 	avatarHash := c.payload.(map[string]interface{})["avatar"]
 	if reflect.TypeOf(avatarHash) != nil {

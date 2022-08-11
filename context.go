@@ -179,7 +179,7 @@ func createContext(payload interface{}) *Context {
 	ctx := &Context{}
 	data, _ := json.Marshal(payload)
 	_ = json.Unmarshal(data, ctx)
-	guild, okg := cachedGuilds[ctx.GuildId]
+	guild, okg := s.Guilds[ctx.GuildId]
 	if okg {
 		ctx.Guild = *guild
 		channel, okc := guild.Channels[ctx.ChannelId]
