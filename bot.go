@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type BotUser struct {
 	Id            string `json:"id"`

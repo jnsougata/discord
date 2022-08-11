@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 import "strconv"
 

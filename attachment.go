@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 // Attachment represents a base Discord attachment
 type Attachment struct {

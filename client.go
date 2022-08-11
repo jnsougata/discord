@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 // Bot is a function that represents a connection to discord.
 func Bot(intent Intent, cache bool, presence Presence) *connection {

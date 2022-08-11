@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type Presence struct {
 	Since    int64

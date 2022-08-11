@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type PartialEmoji struct {
 	Id       string `json:"id"`

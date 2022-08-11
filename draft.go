@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type Draft struct {
 	Content string

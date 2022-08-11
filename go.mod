@@ -1,4 +1,4 @@
-module github.com/jnsougata/disgo
+module github.com/jnsougata/discord
 
 go 1.18
 

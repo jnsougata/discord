@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 import (
 	"fmt"
@@ -91,8 +91,10 @@ func (o *Option) marshal() map[string]interface{} {
 	body["required"] = o.Required
 	switch o.Type {
 	case StringOption:
-		body["min_length"] = o.MinLength
-		body["max_length"] = o.MaxLength
+		if o.MinLength > 0 && o.MaxLength > 0 && o.MinLength < o.MaxLength {
+			body["min_length"] = o.MinLength
+			body["max_length"] = o.MaxLength
+		}
 		if len(o.Choices) > 0 {
 			body["choices"] = o.Choices
 		} else if o.AutoComplete {

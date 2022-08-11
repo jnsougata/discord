@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type TextInput struct {
 	CustomId    string `json:"custom_id"`   // filled internally

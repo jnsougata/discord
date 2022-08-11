@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type Guild struct {
 	Id                          string                   `json:"id"`

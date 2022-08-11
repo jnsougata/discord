@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type Role struct {
 	Id           string `json:"id"`

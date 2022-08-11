@@ -1,4 +1,4 @@
-package disgo
+package discord
 
 type EmbedImage struct {
 	Url    string `json:"url"`

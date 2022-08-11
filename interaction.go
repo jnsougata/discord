@@ -1,1 +1,1 @@
-package disgo
+package discord
