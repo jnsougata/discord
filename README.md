@@ -13,33 +13,32 @@ import (
 )
 
 func main() {
+
 	bot := discord.Bot(discord.Intents(), true, discord.Presence{
 		Since:  0,
-		Status: "dnd",
+		Status: discord.Online,
 		Activity: discord.Activity{
 			Name: "/ping",
-			Type: 2,
+			Type: discord.Listening,
 		},
 	})
-
-	ping := discord.ApplicationCommand{
-		Name:        "ping",
-		Description: "Pong!",
-		Task: func(bot discord.BotUser, ctx discord.Context, options map[string]discord.Option) {
-			for _, role := range ctx.Author.Roles {
-				fmt.Println(role.Permissions)
-			}
-			ctx.Send(discord.Response{Embed: discord.Embed{Image: discord.EmbedImage{Url: ctx.Author.Avatar.URL()}}})
+	bot.Listeners = discord.Listeners{
+		OnReady: func(bot discord.BotUser) {
+			fmt.Println(fmt.Sprintf("Running %s#%s (Id: %s)", bot.Username, bot.Discriminator, bot.Id))
+			fmt.Println("-------")
 		},
 	}
-	bot.AddCommands(ping)
-	bot.OnReady(onReady)
+	bot.Commands(ping)
 	bot.Run(os.Getenv("DISCORD_TOKEN"))
 }
 
-func onReady(b discord.BotUser) {
-	fmt.Println(fmt.Sprintf("Running %s#%s (Id: %s)", b.Username, b.Discriminator, b.Id))
-	fmt.Println("-------")
+var ping = discord.ApplicationCommand{
+	Name:        "ping",
+	Description: "Pong!",
+	Task: func(bot discord.BotUser, ctx discord.Context, options map[string]discord.Option) {
+		ctx.Send(
+			discord.Response{Embed: discord.Embed{Image: discord.EmbedImage{Url: ctx.Author.Avatar.URL()}}})
+	},
 }
 
 ```

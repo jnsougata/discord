@@ -1,8 +1,27 @@
 package discord
 
+type ActivityType int
+type Status string
+
+const (
+	Playing   ActivityType = 0
+	Streaming ActivityType = 1
+	Listening ActivityType = 2
+	Watching  ActivityType = 3
+	Competing ActivityType = 5
+)
+
+const (
+	Online       Status = "online"
+	Idle         Status = "idle"
+	DoNotDisturb Status = "dnd"
+	Invisible    Status = "invisible"
+	Offline      Status = "offline"
+)
+
 type Presence struct {
 	Since    int64
-	Status   string // "online" or "idle" or "dnd" or "offline" or "invisible"
+	Status   Status
 	AFK      bool
 	Activity Activity // base activity object
 	OnMobile bool
@@ -24,19 +43,19 @@ func (p *Presence) Marshal() map[string]interface{} {
 }
 
 type Activity struct {
-	Name string `json:"name"` // "name" of the activity
-	Type int    `json:"type"` // (0: playing), (1: streaming), (2: listening), (3: watching), (5: competing)
-	URL  string `json:"url"`  // "url" of type (3: streaming) activity only
+	Name string       `json:"name"`
+	Type ActivityType `json:"type"`
+	URL  string       `json:"url"` // "url" for ActivityType Streaming
 }
 
 func (a *Activity) Marshal() map[string]interface{} {
-	activity := map[string]interface{}{}
-	activity["type"] = a.Type
+	body := map[string]interface{}{}
+	body["type"] = a.Type
 	if a.Name != "" {
-		activity["name"] = a.Name
+		body["name"] = a.Name
 	}
-	if a.URL != "" && a.Type == 1 {
-		activity["url"] = a.URL
+	if a.URL != "" && a.Type == Streaming {
+		body["url"] = a.URL
 	}
-	return activity
+	return body
 }

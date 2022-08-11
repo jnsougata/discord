@@ -7,37 +7,16 @@ func Bot(intent Intent, cache bool, presence Presence) *connection {
 }
 
 type connection struct {
-	sock *ws
+	sock      *ws
+	Listeners Listeners
 }
 
 func (con *connection) Run(token string) {
-	con.sock.Run(token)
+	con.sock.listeners = con.Listeners
+	con.sock.secret = token
+	con.sock.run(token)
 }
 
-func (con *connection) AddCommands(commands ...ApplicationCommand) {
-	con.sock.AddToQueue(commands...)
-}
-
-func (con *connection) OnSocketReceive(handler func(payload map[string]interface{})) {
-	con.sock.AddHandler(onSocketReceive, handler)
-}
-
-func (con *connection) OnMessage(handler func(bot BotUser, message Message)) {
-	con.sock.AddHandler(onMessageCreate, handler)
-}
-
-func (con *connection) OnReady(handler func(bot BotUser)) {
-	con.sock.AddHandler(onReady, handler)
-}
-
-func (con *connection) OnInteraction(handler func(bot BotUser, ctx *Context)) {
-	con.sock.AddHandler(onInteractionCreate, handler)
-}
-
-func (con *connection) OnGuildJoin(handler func(bot BotUser, guild Guild)) {
-	con.sock.AddHandler(onGuildCreate, handler)
-}
-
-func (con *connection) OnGuildLeave(handler func(bot BotUser, guild Guild)) {
-	con.sock.AddHandler(onGuildDelete, handler)
+func (con *connection) Commands(commands ...ApplicationCommand) {
+	con.sock.queue = append(con.sock.queue, commands...)
 }
