@@ -159,7 +159,7 @@ type SubCommand struct {
 	Name        string
 	Description string
 	Options     []Option
-	Task        func(bot BotUser, ctx Context, options map[string]Option)
+	Execute     func(bot BotUser, ctx Context, options map[string]Option)
 }
 
 func (sc *SubCommand) marshal() map[string]interface{} {
@@ -215,8 +215,8 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 	return body
 }
 
-// ApplicationCommand is a base type for all discord application commands
-type ApplicationCommand struct {
+// Command is a base type for all discord application commands
+type Command struct {
 	Type              CommandType // defaults to chat input
 	Name              string      // must be less than 32 characters
 	Description       string      // must be less than 100 characters
@@ -227,23 +227,23 @@ type ApplicationCommand struct {
 	uniqueId          string
 	subcommands       []SubCommand
 	subcommandGroups  []SubcommandGroup
-	Task              func(bot BotUser, ctx Context, options map[string]Option)
+	Execute           func(bot BotUser, ctx Context, options map[string]Option)
 	AutocompleteTask  func(bot BotUser, ctx Context, choices ...Choice)
 }
 
-func (cmd *ApplicationCommand) SubCommands(subcommands ...SubCommand) {
+func (cmd *Command) SubCommands(subcommands ...SubCommand) {
 	for _, subcommand := range subcommands {
 		cmd.subcommands = append(cmd.subcommands, subcommand)
 	}
 }
 
-func (cmd *ApplicationCommand) SubcommandGroups(subcommandGroups ...SubcommandGroup) {
+func (cmd *Command) SubcommandGroups(subcommandGroups ...SubcommandGroup) {
 	for _, subcommandGroup := range subcommandGroups {
 		cmd.subcommandGroups = append(cmd.subcommandGroups, subcommandGroup)
 	}
 }
 
-func (cmd *ApplicationCommand) marshal() (
+func (cmd *Command) marshal() (
 	map[string]interface{}, func(bot BotUser, ctx Context, options map[string]Option), int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {
@@ -284,13 +284,13 @@ func (cmd *ApplicationCommand) marshal() (
 		} else if len(cmd.subcommands) > 0 || len(cmd.subcommandGroups) > 0 {
 			for _, subcommand := range cmd.subcommands {
 				body["options"] = append(body["options"].([]map[string]interface{}), subcommand.marshal())
-				subcommandBucket[cmd.uniqueId] = map[string]interface{}{subcommand.Name: subcommand.Task}
+				subcommandBucket[cmd.uniqueId] = map[string]interface{}{subcommand.Name: subcommand.Execute}
 			}
 			for _, subcommandGroup := range cmd.subcommandGroups {
 				body["options"] = append(body["options"].([]map[string]interface{}), subcommandGroup.marshal())
 				for _, subcommand := range subcommandGroup.subcommands {
 					groupBucket[cmd.uniqueId] = map[string]interface{}{
-						fmt.Sprintf(`%s_%s`, subcommandGroup.Name, subcommand.Name): subcommand.Task,
+						fmt.Sprintf(`%s_%s`, subcommandGroup.Name, subcommand.Name): subcommand.Execute,
 					}
 				}
 			}
@@ -332,5 +332,5 @@ func (cmd *ApplicationCommand) marshal() (
 	default:
 		body["default_member_permissions"] = cmd.MemberPermissions
 	}
-	return body, cmd.Task, cmd.GuildId
+	return body, cmd.Execute, cmd.GuildId
 }

@@ -17,5 +17,5 @@ type Listeners struct {
 	OnMessage       func(bot BotUser, message Message)
 	OnGuildJoin     func(bot BotUser, guild Guild)
 	OnGuildLeave    func(bot BotUser, guild Guild)
-	OnInteraction   func(bot BotUser, ctx Context)
+	OnInteraction   func(bot BotUser, interaction Interaction)
 }

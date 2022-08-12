@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
 )
 
 type Component struct {
@@ -173,37 +172,6 @@ type Context struct {
 	commandData    []Option
 	componentData  ComponentData
 	raw            map[string]interface{}
-}
-
-func createContext(payload interface{}) *Context {
-	ctx := &Context{}
-	data, _ := json.Marshal(payload)
-	_ = json.Unmarshal(data, ctx)
-	guild, okg := s.Guilds[ctx.GuildId]
-	if okg {
-		ctx.Guild = *guild
-		channel, okc := guild.Channels[ctx.ChannelId]
-		if okc {
-			ctx.Channel = *channel
-		} else {
-			ctx.Channel = Channel{}
-		}
-	} else {
-		ctx.Guild = Guild{}
-		ctx.Channel = Channel{}
-	}
-	converter := Converter{token: ctx.token}
-	userData := payload.(map[string]interface{})["user"]
-	memberData := payload.(map[string]interface{})["member"]
-	if reflect.TypeOf(userData) != nil {
-		converter.payload = userData.(map[string]interface{})
-		ctx.User = *converter.User()
-	}
-	if reflect.TypeOf(memberData) != nil {
-		id := memberData.(map[string]interface{})["user"].(map[string]interface{})["id"].(string)
-		ctx.Author = *guild.Members[id]
-	}
-	return ctx
 }
 
 func (c *Context) OriginalResponse() Message {

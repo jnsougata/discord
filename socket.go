@@ -25,7 +25,7 @@ type ws struct {
 	presence   Presence
 	self       *BotUser
 	secret     string
-	queue      []ApplicationCommand
+	queue      []Command
 	commands   map[string]interface{}
 	listeners  Listeners
 	lazyGuilds map[string]bool
@@ -71,7 +71,7 @@ func (sock *ws) identify(conn *websocket.Conn, intent int) {
 	_ = conn.WriteJSON(payload)
 }
 
-func (sock *ws) registerCommand(com ApplicationCommand, applicationId string) {
+func (sock *ws) registerCommand(com Command, applicationId string) {
 	var route string
 	data, hook, guildId := com.marshal()
 	if guildId != 0 {
@@ -163,6 +163,10 @@ func (sock *ws) run(token string) {
 			sock.locked = false
 			if sock.listeners.OnReady != nil {
 				go sock.listeners.OnReady(*sock.self)
+			} else {
+				fmt.Println(fmt.Sprintf("Logged in as %s#%s (ID:%s)",
+					sock.self.Username, sock.self.Discriminator, sock.self.Id))
+				fmt.Println("---------")
 			}
 		case string(OnGuildJoin):
 			g := Converter{token: token, payload: wsmsg.Data}.Guild()
@@ -245,12 +249,10 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 		}
 
 	case string(OnInteraction):
-		ctx := createContext(data)
-		ctx.raw = data
-		ctx.token = sock.secret
 		if sock.listeners.OnInteraction != nil {
-			go sock.listeners.OnInteraction(*sock.self, *ctx)
+			go sock.listeners.OnInteraction(*sock.self, *conv.Interaction())
 		}
+		ctx := conv.Context()
 		switch ctx.Type {
 		case 1:
 			// interaction ping
@@ -304,7 +306,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					go hook(*sock.self, *ctx, nil)
 				}
 			} else {
-				log.Printf("ApplicationCommand (%s) is not implemented.", ctx.Data.Id)
+				log.Printf("Command (%s) is not implemented.", ctx.Data.Id)
 			}
 
 		case 3:

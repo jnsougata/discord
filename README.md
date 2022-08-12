@@ -14,14 +14,16 @@ import (
 
 func main() {
 
-	bot := discord.Bot(discord.Intents(), true, discord.Presence{
-		Since:  0,
-		Status: discord.Online,
-		Activity: discord.Activity{
-			Name: "/ping",
-			Type: discord.Listening,
-		},
-	})
+	bot := discord.Bot(discord.Intents())
+	bot.Cached = true
+	bot.Presence = discord.Presence{
+          Since:  0,
+          Status: discord.Online,
+          Activity: discord.Activity{
+                Name: "/ping",
+                Type: discord.Listening,
+          },
+    }
 	bot.Listeners = discord.Listeners{
 		OnReady: func(bot discord.BotUser) {
 			fmt.Println(fmt.Sprintf("Running %s#%s (Id: %s)", bot.Username, bot.Discriminator, bot.Id))
@@ -32,7 +34,7 @@ func main() {
 	bot.Run(os.Getenv("DISCORD_TOKEN"))
 }
 
-var ping = discord.ApplicationCommand{
+var ping = discord.Command{
 	Name:        "ping",
 	Description: "Pong!",
 	Task: func(bot discord.BotUser, ctx discord.Context, options map[string]discord.Option) {

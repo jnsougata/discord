@@ -134,3 +134,80 @@ func (c Converter) Attachment() *Attachment {
 	_ = json.Unmarshal(data, attachment)
 	return attachment
 }
+
+func (c Converter) Interaction() *Interaction {
+	i := &Interaction{}
+	data, _ := json.Marshal(c.payload)
+	_ = json.Unmarshal(data, i)
+	i.token = c.token
+	guild, okg := s.Guilds[i.GuildId]
+	if okg {
+		i.Guild = *guild
+		channel, okc := guild.Channels[i.ChannelId]
+		if okc {
+			i.Channel = *channel
+		} else {
+			i.Channel = Channel{}
+		}
+	} else {
+		i.Guild = Guild{}
+		i.Channel = Channel{}
+	}
+	conv := Converter{token: i.token}
+	userData := c.payload.(map[string]interface{})["user"]
+	memberData := c.payload.(map[string]interface{})["member"]
+	if reflect.TypeOf(userData) != nil {
+		conv.payload = userData.(map[string]interface{})
+		i.User = *conv.User()
+	}
+	if reflect.TypeOf(memberData) != nil {
+		id := memberData.(map[string]interface{})["user"].(map[string]interface{})["id"].(string)
+		member, ok := i.Guild.Members[id]
+		if ok {
+			i.Author = *member
+		} else {
+			conv.payload = memberData.(map[string]interface{})
+			i.Author = *conv.Member()
+		}
+	}
+	return i
+}
+
+func (c Converter) Context() *Context {
+	ctx := &Context{}
+	data, _ := json.Marshal(c.payload)
+	_ = json.Unmarshal(data, ctx)
+	ctx.token = c.token
+	ctx.raw = c.payload.(map[string]interface{})
+	guild, okg := s.Guilds[ctx.GuildId]
+	if okg {
+		ctx.Guild = *guild
+		channel, okc := guild.Channels[ctx.ChannelId]
+		if okc {
+			ctx.Channel = *channel
+		} else {
+			ctx.Channel = Channel{}
+		}
+	} else {
+		ctx.Guild = Guild{}
+		ctx.Channel = Channel{}
+	}
+	conv := Converter{token: ctx.token}
+	userData := c.payload.(map[string]interface{})["user"]
+	memberData := c.payload.(map[string]interface{})["member"]
+	if reflect.TypeOf(userData) != nil {
+		conv.payload = userData.(map[string]interface{})
+		ctx.User = *conv.User()
+	}
+	if reflect.TypeOf(memberData) != nil {
+		id := memberData.(map[string]interface{})["user"].(map[string]interface{})["id"].(string)
+		member, ok := guild.Members[id]
+		if ok {
+			ctx.Author = *member
+		} else {
+			conv.payload = memberData.(map[string]interface{})
+			ctx.Author = *conv.Member()
+		}
+	}
+	return ctx
+}

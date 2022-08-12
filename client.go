@@ -1,17 +1,25 @@
 package discord
 
 // Bot is a function that represents a connection to discord.
-func Bot(intent Intent, cache bool, presence Presence) *connection {
+func Bot(intent Intent) *connection {
 	return &connection{
-		ws: &ws{intent: int(intent), memoize: cache, presence: presence}}
+		ws: &ws{intent: int(intent)}}
 }
 
 type connection struct {
 	ws        *ws
+	Cache     bool
+	Presence  Presence
 	Listeners Listeners
 }
 
 func (conn *connection) Run(token string) {
+	if conn.Cache {
+		conn.ws.memoize = true
+	}
+	if conn.Presence.Activity.Name != "" {
+		conn.ws.presence = conn.Presence
+	}
 	conn.ws.locked = true
 	conn.ws.secret = token
 	conn.ws.listeners = conn.Listeners
@@ -19,6 +27,6 @@ func (conn *connection) Run(token string) {
 	conn.ws.run(token)
 }
 
-func (conn *connection) Commands(commands ...ApplicationCommand) {
+func (conn *connection) Commands(commands ...Command) {
 	conn.ws.queue = append(conn.ws.queue, commands...)
 }
