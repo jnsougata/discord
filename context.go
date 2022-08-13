@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-type Component struct {
+type component struct {
 	CustomId string   `json:"custom_id"`
 	Type     int      `json:"type"`
 	Value    string   `json:"value"`
@@ -14,10 +14,10 @@ type Component struct {
 }
 
 type Row struct {
-	Components []Component
+	Components []component
 }
 
-type ComponentData struct {
+type componentData struct {
 	ComponentType int      `json:"component_type"`
 	CustomId      string   `json:"custom_id"`
 	Values        []string `json:"values"`
@@ -170,7 +170,7 @@ type Context struct {
 	Author         Member
 	token          string
 	commandData    []Option
-	componentData  ComponentData
+	componentData  componentData
 	raw            map[string]interface{}
 }
 
@@ -253,4 +253,61 @@ func (c *Context) Delete() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
 	r := minimalReq("DELETE", path, nil, "")
 	go r.fire()
+}
+
+type ResolvedOptions struct {
+	strings      map[string]string
+	integers     map[string]int64
+	booleans     map[string]bool
+	numbers      map[string]float64
+	users        map[string]User
+	roles        map[string]Role
+	channels     map[string]Channel
+	mentionables map[string]interface{}
+	attachments  map[string]Attachment
+}
+
+func (ro *ResolvedOptions) String(name string) (bool, string) {
+	val, ok := ro.strings[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) Integer(name string) (bool, int64) {
+	val, ok := ro.integers[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) Boolean(name string) (bool, bool) {
+	val, ok := ro.booleans[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) Number(name string) (bool, float64) {
+	val, ok := ro.numbers[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) User(name string) (bool, User) {
+	val, ok := ro.users[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) Role(name string) (bool, Role) {
+	val, ok := ro.roles[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) Channel(name string) (bool, Channel) {
+	val, ok := ro.channels[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) Mentionable(name string) (bool, interface{}) {
+	val, ok := ro.mentionables[name]
+	return ok, val
+}
+
+func (ro *ResolvedOptions) Attachment(name string) (bool, Attachment) {
+	val, ok := ro.attachments[name]
+	return ok, val
 }

@@ -260,38 +260,32 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 			if task, ok := sock.commands[ctx.Data.Id]; ok {
 				switch ctx.Data.Type {
 				case 1:
-					type subOption struct {
-						Name    string   `json:"name"`
-						Options []Option `json:"options"`
-						Type    int      `json:"type"`
-					}
-					for _, option := range ctx.Data.Options {
-						if int(option.Type) == 1 {
-							subOptions := map[string]Option{}
-							d := ctx.raw["data"].(map[string]interface{})["options"].([]interface{})
-							ds, _ := json.Marshal(d)
-							var so []subOption
-							_ = json.Unmarshal(ds, &so)
-							for _, opt := range so[0].Options {
-								subOptions[opt.Name] = opt
-							}
-							if hook, ok := subcommandBucket[ctx.Data.Id]; ok {
-								scTask, exists := hook.(map[string]interface{})[option.Name]
-								if exists {
-									hook := scTask.(func(bot BotUser, ctx Context, options map[string]Option))
-									go hook(*sock.self, *ctx, subOptions)
-								}
+					if int(ctx.Data.Options[0].Type) == 1 {
+						type subcommand struct {
+							Name    string   `json:"name"`
+							Options []Option `json:"options"`
+							Type    int      `json:"type"`
+						}
+						d := ctx.raw["data"].(map[string]interface{})["options"].([]interface{})
+						ds, _ := json.Marshal(d)
+						var subcommands []subcommand
+						_ = json.Unmarshal(ds, &subcommands)
+						scos := makeOptions(subcommands[0].Options, ctx.Data.Resolved, sock.secret)
+						if sc, okz := subcommandBucket[ctx.Data.Id]; okz {
+							scTask, exists := sc.(map[string]interface{})[ctx.Data.Options[0].Name]
+							if exists {
+								hook := scTask.(func(bot BotUser, ctx Context, options ResolvedOptions))
+								go hook(*sock.self, *ctx, *scos)
 							}
 						}
+					} else {
+						hook := task.(func(bot BotUser, ctx Context, options ResolvedOptions))
+						if hook != nil {
+							ro := makeOptions(ctx.Data.Options, ctx.Data.Resolved, sock.secret)
+							go hook(*sock.self, *ctx, *ro)
+						}
 					}
-					hook := task.(func(bot BotUser, ctx Context, ops map[string]Option))
-					options := map[string]Option{}
-					for _, option := range ctx.Data.Options {
-						options[option.Name] = option
-					}
-					if hook != nil {
-						go hook(*sock.self, *ctx, options)
-					}
+
 				case 2:
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
@@ -310,7 +304,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 			}
 
 		case 3:
-			var compdata ComponentData
+			var compdata componentData
 			da, _ := json.Marshal(data["data"].(map[string]interface{}))
 			_ = json.Unmarshal(da, &compdata)
 			ctx.componentData = compdata

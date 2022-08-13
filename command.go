@@ -138,6 +138,7 @@ func (o *Option) marshal() map[string]interface{} {
 				}
 			}
 		}()
+		body["channel_types"] = []int{}
 		for _, channelType := range o.ChannelTypes {
 			body["channel_types"] = append(body["channel_types"].([]int), int(channelType))
 		}
@@ -159,7 +160,7 @@ type SubCommand struct {
 	Name        string
 	Description string
 	Options     []Option
-	Execute     func(bot BotUser, ctx Context, options map[string]Option)
+	Execute     func(bot BotUser, ctx Context, options ResolvedOptions)
 }
 
 func (sc *SubCommand) marshal() map[string]interface{} {
@@ -227,7 +228,7 @@ type Command struct {
 	uniqueId          string
 	subcommands       []SubCommand
 	subcommandGroups  []SubcommandGroup
-	Execute           func(bot BotUser, ctx Context, options map[string]Option)
+	Execute           func(bot BotUser, ctx Context, options ResolvedOptions)
 	AutocompleteTask  func(bot BotUser, ctx Context, choices ...Choice)
 }
 
@@ -244,7 +245,7 @@ func (cmd *Command) SubcommandGroups(subcommandGroups ...SubcommandGroup) {
 }
 
 func (cmd *Command) marshal() (
-	map[string]interface{}, func(bot BotUser, ctx Context, options map[string]Option), int64) {
+	map[string]interface{}, func(bot BotUser, ctx Context, options ResolvedOptions), int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {
 	case MessageCommand:
