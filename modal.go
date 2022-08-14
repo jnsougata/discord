@@ -1,7 +1,9 @@
 package discord
 
+import "errors"
+
 type TextInput struct {
-	CustomId    string `json:"custom_id"`   // filled internally
+	CustomId    string `json:"custom_id"`
 	Label       string `json:"label"`       // required default: "Text Input"
 	Style       int    `json:"style"`       // 1 for short, 2 for long default: 1
 	Value       string `json:"value"`       // default: ""
@@ -11,8 +13,10 @@ type TextInput struct {
 	Required    bool   `json:"required"`    // default: false
 }
 
-func (inp *TextInput) marshal() map[string]interface{} {
-	inp.CustomId = assignId(inp.CustomId)
+func (inp *TextInput) marshal() (map[string]interface{}, error) {
+	if inp.CustomId == "" {
+		return nil, errors.New("`CustomId` can not be empty for TextInput")
+	}
 	field := map[string]interface{}{
 		"type":      4,
 		"custom_id": inp.CustomId,
@@ -20,7 +24,7 @@ func (inp *TextInput) marshal() map[string]interface{} {
 	if inp.Label != "" {
 		field["label"] = inp.Label
 	} else {
-		field["label"] = "Text Input"
+		return nil, errors.New("`Label` can not be empty for TextInput")
 	}
 	if inp.Style != 0 {
 		field["style"] = inp.Style
@@ -32,6 +36,8 @@ func (inp *TextInput) marshal() map[string]interface{} {
 	}
 	if inp.Placeholder != "" && len(inp.Placeholder) <= 100 {
 		field["placeholder"] = inp.Placeholder
+	} else {
+		field["placeholder"] = inp.Placeholder[:100]
 	}
 	field["min_length"] = inp.MinLength
 	if inp.MaxLength > 0 && inp.MaxLength <= 4000 {
@@ -44,25 +50,29 @@ func (inp *TextInput) marshal() map[string]interface{} {
 	if inp.Required {
 		field["required"] = true
 	}
-	return field
+	return field, nil
 }
 
 type Modal struct {
+	customId    string
 	Title       string
-	CustomId    string // filled internally
 	Fields      []TextInput
 	SelectMenus []SelectMenu
 }
 
 func (m *Modal) OnSubmit(handler func(bot Bot, ctx Context)) {
-	m.CustomId = assignId(m.CustomId)
-	callbackTasks[m.CustomId] = handler
+	m.customId = assignId()
+	callbackTasks[m.customId] = handler
 }
 
-func (m *Modal) marshal() map[string]interface{} {
+func (m *Modal) marshal() (map[string]interface{}, error) {
 	modal := map[string]interface{}{}
 	modal["title"] = m.Title
-	modal["custom_id"] = assignId(m.CustomId)
+	if m.customId != "" {
+		modal["custom_id"] = m.customId
+	} else {
+		modal["custom_id"] = assignId()
+	}
 	modal["components"] = []map[string]interface{}{}
 	if len(m.Fields) > 0 {
 		for _, field := range m.Fields {
@@ -70,8 +80,13 @@ func (m *Modal) marshal() map[string]interface{} {
 				"type":       1,
 				"components": []map[string]interface{}{},
 			}
-			row["components"] = append(row["components"].([]map[string]interface{}), field.marshal())
-			modal["components"] = append(modal["components"].([]map[string]interface{}), row)
+			fieldValue, err := field.marshal()
+			if err == nil {
+				row["components"] = append(row["components"].([]map[string]interface{}), fieldValue)
+				modal["components"] = append(modal["components"].([]map[string]interface{}), row)
+			} else {
+				return nil, err
+			}
 		}
 	}
 	if len(m.SelectMenus) > 0 {
@@ -84,5 +99,5 @@ func (m *Modal) marshal() map[string]interface{} {
 			modal["components"] = append(modal["components"].([]map[string]interface{}), row)
 		}
 	}
-	return map[string]interface{}{"type": 9, "data": modal}
+	return map[string]interface{}{"type": 9, "data": modal}, nil
 }

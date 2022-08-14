@@ -26,7 +26,7 @@ type Button struct {
 }
 
 func (b *Button) marshal() map[string]interface{} {
-	b.customId = assignId("")
+	b.customId = assignId()
 	if b.OnClick != nil {
 		callbackTasks[b.customId] = b.OnClick
 	}
@@ -97,7 +97,7 @@ type SelectMenu struct {
 }
 
 func (s *SelectMenu) marshal() map[string]interface{} {
-	s.customId = assignId("")
+	s.customId = assignId()
 	if s.OnSelection != nil {
 		callbackTasks[s.customId] = s.OnSelection
 	}

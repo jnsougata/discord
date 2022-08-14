@@ -248,7 +248,7 @@ func (cmd *Command) marshal() (
 		body["type"] = int(SlashCommand)
 		cmd.Type = SlashCommand
 	}
-	cmd.uniqueId = assignId("")
+	cmd.uniqueId = assignId()
 	if cmd.Name == "" {
 		panic("Command {name} must be set")
 	}

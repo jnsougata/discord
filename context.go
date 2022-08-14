@@ -2,7 +2,6 @@ package discord
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 )
@@ -115,12 +114,9 @@ func (f *Followup) Delete() {
 	}
 }
 
-func (f *Followup) Edit(resp Response) Followup {
+func (f *Followup) Edit(resp Response) (Followup, error) {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
 	body, err := resp.marshal()
-	if err != nil {
-		contextualExceptionWrapper(err, f.ctx.Data)
-	}
 	body["wait"] = true
 	r := multipartReq("PATCH", path, body, "", resp.Files...)
 	fl := make(chan Followup, 1)
@@ -139,11 +135,7 @@ func (f *Followup) Edit(resp Response) Followup {
 			applicationId: f.applicationId,
 		}
 	}()
-	val, ok := <-fl
-	if ok {
-		return val
-	}
-	return Followup{}
+	return <-fl, err
 }
 
 type Data struct {
@@ -246,16 +238,13 @@ func (c *Context) OriginalResponse() Message {
 	return m
 }
 
-func (c *Context) Send(resp Response) {
+func (c *Context) Send(resp Response) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body, err := resp.marshal()
-	if err != nil {
-		contextualExceptionWrapper(err, c.Data)
-	} else {
-		r := multipartReq(
-			"POST", path, map[string]interface{}{"type": 4, "data": body}, "", resp.Files...)
-		go r.fire()
-	}
+	r := multipartReq(
+		"POST", path, map[string]interface{}{"type": 4, "data": body}, "", resp.Files...)
+	go r.fire()
+	return err
 }
 
 func (c *Context) Defer(ephemeral bool) {
@@ -273,69 +262,55 @@ func (c *Context) Defer(ephemeral bool) {
 	go r.fire()
 }
 
-func (c *Context) SendModal(modal Modal) {
+func (c *Context) SendModal(modal Modal) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := minimalReq("POST", path, modal.marshal(), "")
+	body, err := modal.marshal()
+	r := minimalReq("POST", path, body, "")
 	go r.fire()
+	return err
 }
 
 func (c *Context) SendFollowup(resp Response) (Followup, error) {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
 	body, err := resp.marshal()
-	if err != nil {
-		contextualExceptionWrapper(err, c.Data)
-		return Followup{}, err
-	} else {
-		r := multipartReq("POST", path, body, "", resp.Files...)
-		fl := make(chan Followup, 1)
-		go func() {
-			bs, _ := io.ReadAll(r.fire().Body)
-			var msg Message
-			_ = json.Unmarshal(bs, &msg)
-			fl <- Followup{
-				Id:            msg.Id,
-				token:         c.Token,
-				Content:       msg.Content,
-				Embeds:        msg.Embeds,
-				ChannelId:     c.ChannelId,
-				Flags:         msg.Flags,
-				ctx:           *c,
-				applicationId: c.ApplicationId,
-			}
-		}()
-		val, ok := <-fl
-		if ok {
-			return val, nil
+	r := multipartReq("POST", path, body, "", resp.Files...)
+	f := make(chan Followup, 1)
+	go func() {
+		bs, _ := io.ReadAll(r.fire().Body)
+		var msg Message
+		_ = json.Unmarshal(bs, &msg)
+		f <- Followup{
+			Id:            msg.Id,
+			token:         c.Token,
+			Content:       msg.Content,
+			Embeds:        msg.Embeds,
+			ChannelId:     c.ChannelId,
+			Flags:         msg.Flags,
+			ctx:           *c,
+			applicationId: c.ApplicationId,
 		}
-		return Followup{}, errors.New("no followup received")
-	}
+	}()
+	val, _ := <-f
+	return val, err
 }
 
-func (c *Context) Edit(resp Response) {
+func (c *Context) Edit(resp Response) error {
 	body, err := resp.marshal()
-	if err != nil {
-		contextualExceptionWrapper(err, c.Data)
+	if c.Type == 2 {
+		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+		r := multipartReq("PATCH", path, body, "", resp.Files...)
+		go r.fire()
 	} else {
-		if c.Type == 2 {
-			path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-			r := multipartReq("PATCH", path, body, "", resp.Files...)
-			go r.fire()
-		} else {
-			path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-			body := map[string]interface{}{"type": 7, "data": body}
-			r := multipartReq("POST", path, body, "", resp.Files...)
-			go r.fire()
-		}
+		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
+		body := map[string]interface{}{"type": 7, "data": body}
+		r := multipartReq("POST", path, body, "", resp.Files...)
+		go r.fire()
 	}
+	return err
 }
 
 func (c *Context) Delete() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
 	r := minimalReq("DELETE", path, nil, "")
 	go r.fire()
-}
-
-func contextualExceptionWrapper(err error, data Data) {
-	fmt.Println(fmt.Sprintf("Command `%s` (id: %s) panicked!", data.Name, data.Id))
-	fmt.Println("Error:", err)
 }

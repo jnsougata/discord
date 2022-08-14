@@ -2,7 +2,6 @@ package discord
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 )
@@ -37,16 +36,14 @@ func (i *Interaction) OriginalResponse() Message {
 	return m
 }
 
-func (i *Interaction) Send(resp Response) {
+func (i *Interaction) Send(resp Response) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	body, err := resp.marshal()
-	if err != nil {
-		interactionalExceptionWrapper(err, i.Id)
-	} else {
-		r := multipartReq(
-			"POST", path, map[string]interface{}{"type": 4, "data": body}, "", resp.Files...)
-		go r.fire()
-	}
+	payload := map[string]interface{}{"type": 4, "data": body}
+	r := multipartReq(
+		"POST", path, payload, "", resp.Files...)
+	go r.fire()
+	return err
 }
 
 func (i *Interaction) Defer(ephemeral bool) {
@@ -64,68 +61,53 @@ func (i *Interaction) Defer(ephemeral bool) {
 	go r.fire()
 }
 
-func (i *Interaction) SendModal(modal Modal) {
+func (i *Interaction) SendModal(modal Modal) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
-	r := minimalReq("POST", path, modal.marshal(), "")
+	body, err := modal.marshal()
+	r := minimalReq("POST", path, body, "")
 	go r.fire()
+	return err
 }
 
 func (i *Interaction) SendFollowup(resp Response) (Followup, error) {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
 	body, err := resp.marshal()
-	if err != nil {
-		interactionalExceptionWrapper(err, i.Id)
-		return Followup{}, err
-	} else {
-		r := multipartReq("POST", path, body, "", resp.Files...)
-		fl := make(chan Followup, 1)
-		go func() {
-			bs, _ := io.ReadAll(r.fire().Body)
-			var msg Message
-			_ = json.Unmarshal(bs, &msg)
-			fl <- Followup{
-				Id:            msg.Id,
-				Content:       msg.Content,
-				Embeds:        msg.Embeds,
-				ChannelId:     i.ChannelId,
-				Flags:         msg.Flags,
-				token:         i.Token,
-				applicationId: i.ApplicationId,
-			}
-		}()
-		val, ok := <-fl
-		if ok {
-			return val, nil
+	r := multipartReq("POST", path, body, "", resp.Files...)
+	f := make(chan Followup, 1)
+	go func() {
+		bs, _ := io.ReadAll(r.fire().Body)
+		var msg Message
+		_ = json.Unmarshal(bs, &msg)
+		f <- Followup{
+			Id:            msg.Id,
+			Content:       msg.Content,
+			Embeds:        msg.Embeds,
+			ChannelId:     i.ChannelId,
+			Flags:         msg.Flags,
+			token:         i.Token,
+			applicationId: i.ApplicationId,
 		}
-		return Followup{}, errors.New("no followup received")
-	}
+	}()
+	return <-f, err
 }
 
-func (i *Interaction) Edit(resp Response) {
+func (i *Interaction) Edit(resp Response) error {
 	body, err := resp.marshal()
-	if err != nil {
-		interactionalExceptionWrapper(err, i.Id)
+	if i.Type == 2 {
+		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", i.ApplicationId, i.Token)
+		r := multipartReq("PATCH", path, body, "", resp.Files...)
+		go r.fire()
 	} else {
-		if i.Type == 2 {
-			path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", i.ApplicationId, i.Token)
-			r := multipartReq("PATCH", path, body, "", resp.Files...)
-			go r.fire()
-		} else {
-			path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
-			nbody := map[string]interface{}{"type": 7, "data": body}
-			r := multipartReq("POST", path, nbody, "", resp.Files...)
-			go r.fire()
-		}
+		path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
+		nbody := map[string]interface{}{"type": 7, "data": body}
+		r := multipartReq("POST", path, nbody, "", resp.Files...)
+		go r.fire()
 	}
+	return err
 }
 
 func (i *Interaction) Delete() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", i.ApplicationId, i.Token)
 	r := minimalReq("DELETE", path, nil, "")
 	go r.fire()
-}
-
-func interactionalExceptionWrapper(err error, id string) {
-	fmt.Println(fmt.Sprintf("Interaction `%s` panicked!", id))
-	fmt.Println("Error:", err)
 }
