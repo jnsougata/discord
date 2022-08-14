@@ -102,7 +102,7 @@ type Followup struct {
 	Embeds        []Embed
 	ChannelId     string
 	Flags         int
-	Data          Data
+	ctx           Context
 	token         string
 	applicationId string
 }
@@ -119,7 +119,7 @@ func (f *Followup) Edit(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
 	body, err := resp.marshal()
 	if err != nil {
-		contextualExceptionWrapper(err, f.Data)
+		contextualExceptionWrapper(err, f.ctx.Data)
 	}
 	body["wait"] = true
 	r := multipartReq("PATCH", path, body, "", resp.Files...)
@@ -135,6 +135,7 @@ func (f *Followup) Edit(resp Response) Followup {
 			ChannelId:     msg.ChannelId,
 			Flags:         msg.Flags,
 			token:         f.token,
+			ctx:           f.ctx,
 			applicationId: f.applicationId,
 		}
 	}()
@@ -293,12 +294,12 @@ func (c *Context) SendFollowup(resp Response) (Followup, error) {
 			_ = json.Unmarshal(bs, &msg)
 			fl <- Followup{
 				Id:            msg.Id,
-				Data:          c.Data,
 				token:         c.Token,
 				Content:       msg.Content,
 				Embeds:        msg.Embeds,
 				ChannelId:     c.ChannelId,
 				Flags:         msg.Flags,
+				ctx:           *c,
 				applicationId: c.ApplicationId,
 			}
 		}()
