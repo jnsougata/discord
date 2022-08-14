@@ -1,5 +1,7 @@
 package discord
 
+import "errors"
+
 type ButtonStyle int
 
 const (
@@ -141,32 +143,36 @@ type View struct {
 	OnTimeout func(bot Bot, ctx Context)
 }
 
-func (v *View) AddButtons(buttons ...Button) {
+func (v *View) AddButtons(buttons ...Button) error {
 	if len(v.rows) < 5 {
 		if len(buttons) <= 5 {
 			row := actionRow{Buttons: buttons}
 			v.rows = append(v.rows, row)
+			return nil
 		} else {
-			panic("Only 5 buttons can be added to a row")
+			row := actionRow{Buttons: buttons[:5]}
+			v.rows = append(v.rows, row)
+			return errors.New("you can add max 5 buttons at a time")
 		}
 	} else {
-		panic("View can contain max 5 rows")
+		return errors.New("view can contain max 5 rows")
 	}
 }
 
-func (v *View) AddSelectMenu(menu SelectMenu) {
+func (v *View) AddSelectMenu(menu SelectMenu) error {
 	if len(v.rows) < 5 {
 		if len(menu.Options) == 0 {
-			panic("Select menu must contain at least one option")
+			return errors.New("select menu must have at least one option")
 		}
 		row := actionRow{SelectMenu: menu}
 		v.rows = append(v.rows, row)
+		return nil
 	} else {
-		panic("View can contain max 5 rows")
+		return errors.New("view can contain max 5 rows")
 	}
 }
 
-func (v *View) marshal() []interface{} {
+func (v *View) marshal() ([]interface{}, error) {
 	const timeout = 14.98 * 60
 	if v.Timeout == 0 || v.Timeout > timeout {
 		v.Timeout = timeout
@@ -199,8 +205,8 @@ func (v *View) marshal() []interface{} {
 			go scheduleDeletion(v.Timeout, callbackTasks, undo)
 		}
 		if !(hasButton || hasSelect) {
-			panic("View must contain at least one button or select menu")
+			return nil, errors.New("view must contain at least one button or select menu")
 		}
 	}
-	return c
+	return c, nil
 }

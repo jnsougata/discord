@@ -2,6 +2,7 @@ package discord
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -37,7 +38,7 @@ type Response struct {
 	Files           []File
 }
 
-func (resp *Response) marshal() map[string]interface{} {
+func (resp *Response) marshal() (map[string]interface{}, error) {
 	flag := 0
 	body := map[string]interface{}{}
 	if resp.Content != "" {
@@ -58,9 +59,6 @@ func (resp *Response) marshal() map[string]interface{} {
 	for _, em := range resp.Embeds {
 		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.Marshal())
 	}
-	if len(resp.AllowedMentions) > 0 && len(resp.AllowedMentions) <= 100 {
-		body["allowed_mentions"] = resp.AllowedMentions
-	}
 	if resp.TTS {
 		body["tts"] = true
 	}
@@ -73,8 +71,11 @@ func (resp *Response) marshal() map[string]interface{} {
 	if resp.Ephemeral || resp.SuppressEmbeds {
 		body["flags"] = flag
 	}
-	if len(resp.View.rows) > 0 {
-		body["components"] = resp.View.marshal()
+	view, err := resp.View.marshal()
+	if err == nil {
+		body["components"] = view
+	} else {
+		return nil, err
 	}
 	if checkTrueFile(resp.File) {
 		resp.Files = append([]File{resp.File}, resp.Files...)
@@ -92,7 +93,7 @@ func (resp *Response) marshal() map[string]interface{} {
 			resp.Files = append(resp.Files[:i], resp.Files[i+1:]...)
 		}
 	}
-	return body
+	return body, nil
 }
 
 type Followup struct {
@@ -101,6 +102,7 @@ type Followup struct {
 	Embeds        []Embed
 	ChannelId     string
 	Flags         int
+	Data          Data
 	token         string
 	applicationId string
 }
@@ -115,7 +117,10 @@ func (f *Followup) Delete() {
 
 func (f *Followup) Edit(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
-	body := resp.marshal()
+	body, err := resp.marshal()
+	if err != nil {
+		contextualExceptionWrapper(err, f.Data)
+	}
 	body["wait"] = true
 	r := multipartReq("PATCH", path, body, "", resp.Files...)
 	fl := make(chan Followup, 1)
@@ -148,111 +153,6 @@ type Data struct {
 	Options  []Option               `json:"options"`
 	GuildId  string                 `json:"guild_id"`
 	TargetId string                 `json:"target_id"`
-}
-
-type Context struct {
-	Id             string `json:"id"`
-	ApplicationId  string `json:"application_id"`
-	Type           int    `json:"type"`
-	Data           Data   `json:"data"`
-	GuildId        string `json:"guild_id"`
-	ChannelId      string `json:"channel_id"`
-	User           User   `json:"user"`
-	Token          string `json:"token"`
-	Version        int    `json:"version"`
-	AppPermissions string `json:"app_permissions"`
-	Locale         string `json:"locale"`
-	GuildLocale    string `json:"guild_locale"`
-	TargetUser     User
-	TargetMessage  Message
-	Channel        Channel
-	Guild          Guild
-	Author         Member
-	token          string
-	commandData    []Option
-	componentData  componentData
-	raw            map[string]interface{}
-}
-
-func (c *Context) OriginalResponse() Message {
-	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := minimalReq("GET", path, nil, "")
-	bs, _ := io.ReadAll(r.fire().Body)
-	var m Message
-	_ = json.Unmarshal(bs, &m)
-	return m
-}
-
-func (c *Context) Send(resp Response) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := multipartReq(
-		"POST", path, map[string]interface{}{"type": 4, "data": resp.marshal()}, "", resp.Files...)
-	go r.fire()
-}
-
-func (c *Context) Defer(ephemeral bool) {
-	body := map[string]interface{}{}
-	if c.Type == 2 {
-		body["type"] = 5
-		if ephemeral {
-			body["data"] = map[string]interface{}{"flags": 1 << 6}
-		}
-	} else {
-		body["type"] = 6
-	}
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := minimalReq("POST", path, body, "")
-	go r.fire()
-}
-
-func (c *Context) SendModal(modal Modal) {
-	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	r := minimalReq("POST", path, modal.marshal(), "")
-	go r.fire()
-}
-
-func (c *Context) SendFollowup(resp Response) Followup {
-	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	r := multipartReq("POST", path, resp.marshal(), "", resp.Files...)
-	fl := make(chan Followup, 1)
-	go func() {
-		bs, _ := io.ReadAll(r.fire().Body)
-		var msg Message
-		_ = json.Unmarshal(bs, &msg)
-		fl <- Followup{
-			Id:            msg.Id,
-			Content:       msg.Content,
-			Embeds:        msg.Embeds,
-			ChannelId:     c.ChannelId,
-			Flags:         msg.Flags,
-			token:         c.Token,
-			applicationId: c.ApplicationId,
-		}
-	}()
-	val, ok := <-fl
-	if ok {
-		return val
-	}
-	return Followup{}
-}
-
-func (c *Context) Edit(resp Response) {
-	if c.Type == 2 {
-		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-		r := multipartReq("PATCH", path, resp.marshal(), "", resp.Files...)
-		go r.fire()
-	} else {
-		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-		body := map[string]interface{}{"type": 7, "data": resp.marshal()}
-		r := multipartReq("POST", path, body, "", resp.Files...)
-		go r.fire()
-	}
-}
-
-func (c *Context) Delete() {
-	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-	r := minimalReq("DELETE", path, nil, "")
-	go r.fire()
 }
 
 type ResolvedOptions struct {
@@ -310,4 +210,131 @@ func (ro *ResolvedOptions) Mentionable(name string) (bool, interface{}) {
 func (ro *ResolvedOptions) Attachment(name string) (bool, Attachment) {
 	val, ok := ro.attachments[name]
 	return ok, val
+}
+
+type Context struct {
+	Id             string `json:"id"`
+	ApplicationId  string `json:"application_id"`
+	Type           int    `json:"type"`
+	Data           Data   `json:"data"`
+	GuildId        string `json:"guild_id"`
+	ChannelId      string `json:"channel_id"`
+	User           User   `json:"user"`
+	Token          string `json:"token"`
+	Version        int    `json:"version"`
+	AppPermissions string `json:"app_permissions"`
+	Locale         string `json:"locale"`
+	GuildLocale    string `json:"guild_locale"`
+	TargetUser     User
+	TargetMessage  Message
+	Channel        Channel
+	Guild          Guild
+	Author         Member
+	token          string
+	commandData    []Option
+	componentData  componentData
+	raw            map[string]interface{}
+}
+
+func (c *Context) OriginalResponse() Message {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := minimalReq("GET", path, nil, "")
+	bs, _ := io.ReadAll(r.fire().Body)
+	var m Message
+	_ = json.Unmarshal(bs, &m)
+	return m
+}
+
+func (c *Context) Send(resp Response) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
+	body, err := resp.marshal()
+	if err != nil {
+		contextualExceptionWrapper(err, c.Data)
+	} else {
+		r := multipartReq(
+			"POST", path, map[string]interface{}{"type": 4, "data": body}, "", resp.Files...)
+		go r.fire()
+	}
+}
+
+func (c *Context) Defer(ephemeral bool) {
+	body := map[string]interface{}{}
+	if c.Type == 2 {
+		body["type"] = 5
+		if ephemeral {
+			body["data"] = map[string]interface{}{"flags": 1 << 6}
+		}
+	} else {
+		body["type"] = 6
+	}
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
+	r := minimalReq("POST", path, body, "")
+	go r.fire()
+}
+
+func (c *Context) SendModal(modal Modal) {
+	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
+	r := minimalReq("POST", path, modal.marshal(), "")
+	go r.fire()
+}
+
+func (c *Context) SendFollowup(resp Response) (Followup, error) {
+	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
+	body, err := resp.marshal()
+	if err != nil {
+		contextualExceptionWrapper(err, c.Data)
+		return Followup{}, err
+	} else {
+		r := multipartReq("POST", path, body, "", resp.Files...)
+		fl := make(chan Followup, 1)
+		go func() {
+			bs, _ := io.ReadAll(r.fire().Body)
+			var msg Message
+			_ = json.Unmarshal(bs, &msg)
+			fl <- Followup{
+				Id:            msg.Id,
+				Data:          c.Data,
+				token:         c.Token,
+				Content:       msg.Content,
+				Embeds:        msg.Embeds,
+				ChannelId:     c.ChannelId,
+				Flags:         msg.Flags,
+				applicationId: c.ApplicationId,
+			}
+		}()
+		val, ok := <-fl
+		if ok {
+			return val, nil
+		}
+		return Followup{}, errors.New("no followup received")
+	}
+}
+
+func (c *Context) Edit(resp Response) {
+	body, err := resp.marshal()
+	if err != nil {
+		contextualExceptionWrapper(err, c.Data)
+	} else {
+		if c.Type == 2 {
+			path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+			r := multipartReq("PATCH", path, body, "", resp.Files...)
+			go r.fire()
+		} else {
+			path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
+			body := map[string]interface{}{"type": 7, "data": body}
+			r := multipartReq("POST", path, body, "", resp.Files...)
+			go r.fire()
+		}
+	}
+}
+
+func (c *Context) Delete() {
+	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
+	r := minimalReq("DELETE", path, nil, "")
+	go r.fire()
+}
+
+func contextualExceptionWrapper(err error, data Data) {
+	fmt.Println(fmt.Sprintf("Command `%s` (id: %s) panicked!", data.Name, data.Id))
+	fmt.Println("Error:", err)
 }

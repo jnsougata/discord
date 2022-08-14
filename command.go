@@ -142,16 +142,6 @@ func (o *Option) marshal() map[string]interface{} {
 		for _, channelType := range o.ChannelTypes {
 			body["channel_types"] = append(body["channel_types"].([]int), int(channelType))
 		}
-	case RoleOption:
-
-	case UserOption:
-
-	case BooleanOption:
-
-	case MentionableOption:
-
-	case AttachmentOption:
-
 	}
 	return body
 }
@@ -218,6 +208,7 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 
 // Command is a base type for all discord application commands
 type Command struct {
+	uniqueId          string
 	Type              CommandType // defaults to chat input
 	Name              string      // must be less than 32 characters
 	Description       string      // must be less than 100 characters
@@ -225,7 +216,6 @@ type Command struct {
 	DMPermission      bool // default: false
 	MemberPermissions int  // default: send_messages
 	GuildId           int64
-	uniqueId          string
 	subcommands       []SubCommand
 	subcommandGroups  []SubcommandGroup
 	Execute           func(bot Bot, ctx Context, options ResolvedOptions)
