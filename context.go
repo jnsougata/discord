@@ -37,7 +37,7 @@ type Response struct {
 	Files           []File
 }
 
-func (resp *Response) Marshal() map[string]interface{} {
+func (resp *Response) marshal() map[string]interface{} {
 	flag := 0
 	body := map[string]interface{}{}
 	if resp.Content != "" {
@@ -73,7 +73,7 @@ func (resp *Response) Marshal() map[string]interface{} {
 	if resp.Ephemeral || resp.SuppressEmbeds {
 		body["flags"] = flag
 	}
-	if len(resp.View.ActionRows) > 0 {
+	if len(resp.View.rows) > 0 {
 		body["components"] = resp.View.marshal()
 	}
 	if checkTrueFile(resp.File) {
@@ -115,7 +115,7 @@ func (f *Followup) Delete() {
 
 func (f *Followup) Edit(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
-	body := resp.Marshal()
+	body := resp.marshal()
 	body["wait"] = true
 	r := multipartReq("PATCH", path, body, "", resp.Files...)
 	fl := make(chan Followup, 1)
@@ -186,7 +186,7 @@ func (c *Context) OriginalResponse() Message {
 func (c *Context) Send(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	r := multipartReq(
-		"POST", path, map[string]interface{}{"type": 4, "data": resp.Marshal()}, "", resp.Files...)
+		"POST", path, map[string]interface{}{"type": 4, "data": resp.marshal()}, "", resp.Files...)
 	go r.fire()
 }
 
@@ -213,7 +213,7 @@ func (c *Context) SendModal(modal Modal) {
 
 func (c *Context) SendFollowup(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	r := multipartReq("POST", path, resp.Marshal(), "", resp.Files...)
+	r := multipartReq("POST", path, resp.marshal(), "", resp.Files...)
 	fl := make(chan Followup, 1)
 	go func() {
 		bs, _ := io.ReadAll(r.fire().Body)
@@ -239,11 +239,11 @@ func (c *Context) SendFollowup(resp Response) Followup {
 func (c *Context) Edit(resp Response) {
 	if c.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-		r := multipartReq("PATCH", path, resp.Marshal(), "", resp.Files...)
+		r := multipartReq("PATCH", path, resp.marshal(), "", resp.Files...)
 		go r.fire()
 	} else {
 		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-		body := map[string]interface{}{"type": 7, "data": resp.Marshal()}
+		body := map[string]interface{}{"type": 7, "data": resp.marshal()}
 		r := multipartReq("POST", path, body, "", resp.Files...)
 		go r.fire()
 	}

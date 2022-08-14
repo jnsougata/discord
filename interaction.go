@@ -39,7 +39,7 @@ func (i *Interaction) OriginalResponse() Message {
 func (i *Interaction) Send(resp Response) {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	r := multipartReq(
-		"POST", path, map[string]interface{}{"type": 4, "data": resp.Marshal()}, "", resp.Files...)
+		"POST", path, map[string]interface{}{"type": 4, "data": resp.marshal()}, "", resp.Files...)
 	go r.fire()
 }
 
@@ -66,7 +66,7 @@ func (i *Interaction) SendModal(modal Modal) {
 
 func (i *Interaction) SendFollowup(resp Response) Followup {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
-	r := multipartReq("POST", path, resp.Marshal(), "", resp.Files...)
+	r := multipartReq("POST", path, resp.marshal(), "", resp.Files...)
 	fl := make(chan Followup, 1)
 	go func() {
 		bs, _ := io.ReadAll(r.fire().Body)
@@ -92,11 +92,11 @@ func (i *Interaction) SendFollowup(resp Response) Followup {
 func (i *Interaction) Edit(resp Response) {
 	if i.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", i.ApplicationId, i.Token)
-		r := multipartReq("PATCH", path, resp.Marshal(), "", resp.Files...)
+		r := multipartReq("PATCH", path, resp.marshal(), "", resp.Files...)
 		go r.fire()
 	} else {
 		path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
-		body := map[string]interface{}{"type": 7, "data": resp.Marshal()}
+		body := map[string]interface{}{"type": 7, "data": resp.marshal()}
 		r := multipartReq("POST", path, body, "", resp.Files...)
 		go r.fire()
 	}

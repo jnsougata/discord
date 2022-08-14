@@ -13,9 +13,9 @@ const (
 
 type Listeners struct {
 	OnSocketReceive func(payload interface{})
-	OnReady         func(bot BotUser)
-	OnMessage       func(bot BotUser, message Message)
-	OnGuildJoin     func(bot BotUser, guild Guild)
-	OnGuildLeave    func(bot BotUser, guild Guild)
-	OnInteraction   func(bot BotUser, interaction Interaction)
+	OnReady         func(bot Bot)
+	OnMessage       func(bot Bot, message Message)
+	OnGuildJoin     func(bot Bot, guild Guild)
+	OnGuildLeave    func(bot Bot, guild Guild)
+	OnInteraction   func(bot Bot, interaction Interaction)
 }

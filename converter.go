@@ -11,8 +11,8 @@ type Converter struct {
 	payload interface{}
 }
 
-func (c Converter) Bot() *BotUser {
-	bot := &BotUser{}
+func (c Converter) Bot() *Bot {
+	bot := &Bot{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, bot)
 	return bot

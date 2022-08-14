@@ -1,20 +1,26 @@
 package discord
 
-import (
-	"log"
+type ButtonStyle int
+
+const (
+	BlueButton  ButtonStyle = 1
+	GreyButton  ButtonStyle = 2
+	GreenButton ButtonStyle = 3
+	RedButton   ButtonStyle = 4
+	Linkbutton  ButtonStyle = 5
 )
 
 var callbackTasks = map[string]interface{}{}
 var timeoutTasks = map[string][]interface{}{}
 
 type Button struct {
-	Style    int    // default: 1 (blue) More: 2 (grey), 3 (green), 4 (red), 5 (link)
-	Label    string // default: "Button"
+	customId string
+	Style    ButtonStyle
+	Label    string
 	Emoji    PartialEmoji
-	URL      string // only for style 5 (link)
+	URL      string
 	Disabled bool
-	customId string // filled internally
-	OnClick  func(bot BotUser, comp Context)
+	OnClick  func(bot Bot, comp Context)
 }
 
 func (b *Button) marshal() map[string]interface{} {
@@ -26,20 +32,20 @@ func (b *Button) marshal() map[string]interface{} {
 		"type":      2,
 		"custom_id": b.customId,
 	}
-	if b.Style != 0 {
-		btn["style"] = b.Style
+	if int(b.Style) != 0 {
+		btn["style"] = int(b.Style)
 	} else {
-		btn["style"] = 1
+		btn["style"] = int(BlueButton)
 	}
 	if b.Label != "" {
 		btn["label"] = b.Label
 	} else {
-		btn["label"] = "Button"
+		panic("Button label can not be empty")
 	}
 	if b.Emoji.Id != "" {
 		btn["emoji"] = b.Emoji
 	}
-	if b.URL != "" && b.Style == 5 {
+	if b.URL != "" && b.Style == Linkbutton {
 		btn["url"] = b.URL
 	}
 	if b.Disabled {
@@ -85,7 +91,7 @@ type SelectMenu struct {
 	MinValues   int            // default: 0
 	MaxValues   int            // default: 1
 	Disabled    bool
-	OnSelection func(bot BotUser, comp Context, values ...string)
+	OnSelection func(bot Bot, comp Context, values ...string)
 }
 
 func (s *SelectMenu) marshal() map[string]interface{} {
@@ -124,34 +130,39 @@ func (s *SelectMenu) marshal() map[string]interface{} {
 	return menu
 }
 
-type ActionRow struct {
+type actionRow struct {
 	Buttons    []Button // max 5 buttons
 	SelectMenu SelectMenu
 }
 
 type View struct {
-	Timeout    float64     // default: 15 * 60 seconds
-	ActionRows []ActionRow // max 5 rows
-	OnTimeout  func(bot BotUser, ctx Context)
-}
-
-func (v *View) AddRow(row ActionRow) {
-	if len(v.ActionRows) < 5 {
-		v.ActionRows = append(v.ActionRows, row)
-	}
+	rows      []actionRow
+	Timeout   float64 // default: 15 * 60 seconds
+	OnTimeout func(bot Bot, ctx Context)
 }
 
 func (v *View) AddButtons(buttons ...Button) {
-	if len(v.ActionRows) < 5 {
-		row := ActionRow{Buttons: buttons}
-		v.ActionRows = append([]ActionRow{row}, v.ActionRows...)
+	if len(v.rows) < 5 {
+		if len(buttons) <= 5 {
+			row := actionRow{Buttons: buttons}
+			v.rows = append(v.rows, row)
+		} else {
+			panic("Only 5 buttons can be added to a row")
+		}
+	} else {
+		panic("View can contain max 5 rows")
 	}
 }
 
 func (v *View) AddSelectMenu(menu SelectMenu) {
-	if len(v.ActionRows) < 5 {
-		row := ActionRow{SelectMenu: menu}
-		v.ActionRows = append([]ActionRow{row}, v.ActionRows...)
+	if len(v.rows) < 5 {
+		if len(menu.Options) == 0 {
+			panic("Select menu must contain at least one option")
+		}
+		row := actionRow{SelectMenu: menu}
+		v.rows = append(v.rows, row)
+	} else {
+		panic("View can contain max 5 rows")
 	}
 }
 
@@ -162,39 +173,33 @@ func (v *View) marshal() []interface{} {
 	}
 	var undo = map[string]bool{}
 	var c []interface{}
-	if len(v.ActionRows) > 5 {
-		v.ActionRows = v.ActionRows[:5]
-	}
-	for _, row := range v.ActionRows {
-		num := 0
+	for _, row := range v.rows {
+		hasButton := len(row.Buttons) > 0
+		hasSelect := len(row.SelectMenu.Options) > 0
 		tmp := map[string]interface{}{
 			"type":       1,
 			"components": []interface{}{},
 		}
 		for _, button := range row.Buttons {
-			if num < 5 {
-				undo[button.customId] = true
-				if v.OnTimeout != nil {
-					timeoutTasks[button.customId] = []interface{}{v.Timeout, v.OnTimeout}
-				}
-				tmp["components"] = append(tmp["components"].([]interface{}), button.marshal())
-				num++
+			undo[button.customId] = true
+			if v.OnTimeout != nil {
+				timeoutTasks[button.customId] = []interface{}{v.Timeout, v.OnTimeout}
 			}
+			tmp["components"] = append(tmp["components"].([]interface{}), button.marshal())
 		}
-		if len(row.SelectMenu.Options) > 0 {
-			if num == 0 {
-				undo[row.SelectMenu.customId] = true
-				if v.OnTimeout != nil {
-					timeoutTasks[row.SelectMenu.customId] = []interface{}{v.Timeout, v.OnTimeout}
-				}
-				tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.marshal())
-			} else {
-				log.Println("Single ActionRow can contain either 1x SelectMenu or max 5x Buttons")
+		if !hasButton {
+			undo[row.SelectMenu.customId] = true
+			if v.OnTimeout != nil {
+				timeoutTasks[row.SelectMenu.customId] = []interface{}{v.Timeout, v.OnTimeout}
 			}
+			tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.marshal())
 		}
 		if len(undo) > 0 {
 			c = append(c, tmp)
 			go scheduleDeletion(v.Timeout, callbackTasks, undo)
+		}
+		if !(hasButton || hasSelect) {
+			panic("View must contain at least one button or select menu")
 		}
 	}
 	return c

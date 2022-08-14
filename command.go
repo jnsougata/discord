@@ -160,7 +160,7 @@ type SubCommand struct {
 	Name        string
 	Description string
 	Options     []Option
-	Execute     func(bot BotUser, ctx Context, options ResolvedOptions)
+	Execute     func(bot Bot, ctx Context, options ResolvedOptions)
 }
 
 func (sc *SubCommand) marshal() map[string]interface{} {
@@ -228,8 +228,8 @@ type Command struct {
 	uniqueId          string
 	subcommands       []SubCommand
 	subcommandGroups  []SubcommandGroup
-	Execute           func(bot BotUser, ctx Context, options ResolvedOptions)
-	AutocompleteTask  func(bot BotUser, ctx Context, choices ...Choice)
+	Execute           func(bot Bot, ctx Context, options ResolvedOptions)
+	AutocompleteTask  func(bot Bot, ctx Context, choices ...Choice)
 }
 
 func (cmd *Command) SubCommands(subcommands ...SubCommand) {
@@ -245,7 +245,7 @@ func (cmd *Command) SubcommandGroups(subcommandGroups ...SubcommandGroup) {
 }
 
 func (cmd *Command) marshal() (
-	map[string]interface{}, func(bot BotUser, ctx Context, options ResolvedOptions), int64) {
+	map[string]interface{}, func(bot Bot, ctx Context, options ResolvedOptions), int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {
 	case MessageCommand:

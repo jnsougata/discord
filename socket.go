@@ -23,7 +23,7 @@ type ws struct {
 	sessionId  string
 	interval   float64
 	presence   Presence
-	self       *BotUser
+	self       *Bot
 	secret     string
 	queue      []Command
 	commands   map[string]interface{}
@@ -274,12 +274,12 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 						if sc, okz := subcommandBucket[ctx.Data.Id]; okz {
 							scTask, exists := sc.(map[string]interface{})[ctx.Data.Options[0].Name]
 							if exists {
-								hook := scTask.(func(bot BotUser, ctx Context, options ResolvedOptions))
+								hook := scTask.(func(bot Bot, ctx Context, options ResolvedOptions))
 								go hook(*sock.self, *ctx, *scos)
 							}
 						}
 					} else {
-						hook := task.(func(bot BotUser, ctx Context, options ResolvedOptions))
+						hook := task.(func(bot Bot, ctx Context, options ResolvedOptions))
 						if hook != nil {
 							ro := makeOptions(ctx.Data.Options, ctx.Data.Resolved, sock.secret)
 							go hook(*sock.self, *ctx, *ro)
@@ -290,13 +290,13 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
 					ctx.TargetUser = *Converter{token: sock.secret, payload: rud.(map[string]interface{})}.User()
-					hook := task.(func(bot BotUser, ctx Context, _ map[string]Option))
+					hook := task.(func(bot Bot, ctx Context, _ map[string]Option))
 					go hook(*sock.self, *ctx, nil)
 				case 3:
 					target := ctx.Data.TargetId
 					rmd := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
 					ctx.TargetMessage = *Converter{token: sock.secret, payload: rmd.(map[string]interface{})}.Message()
-					hook := task.(func(bot BotUser, ctx Context, _ map[string]Option))
+					hook := task.(func(bot Bot, ctx Context, _ map[string]Option))
 					go hook(*sock.self, *ctx, nil)
 				}
 			} else {
@@ -312,19 +312,19 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 			case 2:
 				cb, ok := callbackTasks[ctx.componentData.CustomId]
 				if ok {
-					callback := cb.(func(b BotUser, ctx Context))
+					callback := cb.(func(b Bot, ctx Context))
 					go callback(*sock.self, *ctx)
 				}
 			case 3:
 				cb, ok := callbackTasks[ctx.componentData.CustomId]
 				if ok {
-					callback := cb.(func(b BotUser, ctx Context, values ...string))
+					callback := cb.(func(b Bot, ctx Context, values ...string))
 					go callback(*sock.self, *ctx, ctx.componentData.Values...)
 				}
 			}
 			tmp, ok := timeoutTasks[ctx.componentData.CustomId]
 			if ok {
-				onTimeoutHandler := tmp[1].(func(b BotUser, ctx Context))
+				onTimeoutHandler := tmp[1].(func(b Bot, ctx Context))
 				duration := tmp[0].(float64)
 				delete(timeoutTasks, ctx.componentData.CustomId)
 				go scheduleTimeoutTask(duration, *sock.self, *ctx, onTimeoutHandler)
@@ -334,7 +334,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 		case 5:
 			callback, ok := callbackTasks[ctx.componentData.CustomId]
 			if ok {
-				go callback.(func(b BotUser, ctx *Context))(*sock.self, ctx)
+				go callback.(func(b Bot, ctx *Context))(*sock.self, ctx)
 				delete(callbackTasks, ctx.componentData.CustomId)
 			}
 		default:
@@ -344,7 +344,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 	}
 }
 
-func scheduleTimeoutTask(timeout float64, user BotUser, ctx Context, task func(bot BotUser, ctx Context)) {
+func scheduleTimeoutTask(timeout float64, user Bot, ctx Context, task func(bot Bot, ctx Context)) {
 	time.Sleep(time.Duration(timeout) * time.Second)
 	task(user, ctx)
 }

@@ -1,7 +1,7 @@
 package discord
 
-// Bot is a function that represents a connection to discord.
-func Bot(intent Intent) *connection {
+// New is a function that represents a connection to discord.
+func New(intent Intent) *connection {
 	return &connection{
 		ws: &ws{intent: int(intent)}}
 }

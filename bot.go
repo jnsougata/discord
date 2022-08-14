@@ -1,6 +1,6 @@
 package discord
 
-type BotUser struct {
+type Bot struct {
 	Id            string `json:"id"`
 	Username      string `json:"username"`
 	Discriminator string `json:"discriminator"`
