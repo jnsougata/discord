@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	bot := discord.Bot(discord.Intents())
+	bot := discord.New(discord.Intents())
 	bot.Cached = true
 	bot.Presence = discord.Presence{
           Since:  0,
@@ -24,22 +24,24 @@ func main() {
                 Type: discord.Listening,
           },
     }
-	bot.Listeners = discord.Listeners{
-		OnReady: func(bot discord.BotUser) {
-			fmt.Println(fmt.Sprintf("Running %s#%s (Id: %s)", bot.Username, bot.Discriminator, bot.Id))
-			fmt.Println("-------")
-		},
-	}
-	bot.Commands(ping)
+	bot.Listeners = listeners
+	bot.Commands(avatar)
 	bot.Run(os.Getenv("DISCORD_TOKEN"))
 }
 
-var ping = discord.Command{
-	Name:        "ping",
-	Description: "Pong!",
-	Task: func(bot discord.BotUser, ctx discord.Context, options map[string]discord.Option) {
-		ctx.Send(
-			discord.Response{Embed: discord.Embed{Image: discord.EmbedImage{Url: ctx.Author.Avatar.URL()}}})
+var listeners = discord.Listeners{
+    OnReady: func(bot discord.Bot) {
+    	fmt.Println(fmt.Sprintf("Running %s#%s (Id: %s)", bot.Username, bot.Discriminator, bot.Id))
+    	fmt.Println("-------")
+    },
+    // add more built-in listeners here
+}
+
+var avatar = discord.Command{
+	Name:        "avatar",
+	Description: "shows the avatar of the invoker",
+	Execute: func(bot discord.Bot, ctx discord.Context, options discord.ResolvedOptions) {
+		ctx.Send(discord.Response{Embed: discord.Embed{Image: discord.EmbedImage{Url: ctx.Author.Avatar.URL()}}})
 	},
 }
 
