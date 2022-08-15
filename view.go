@@ -25,7 +25,7 @@ type Button struct {
 	OnClick  func(bot Bot, comp Context)
 }
 
-func (b *Button) marshal() map[string]interface{} {
+func (b *Button) marshal() (map[string]interface{}, error) {
 	b.customId = assignId()
 	if b.OnClick != nil {
 		callbackTasks[b.customId] = b.OnClick
@@ -42,7 +42,7 @@ func (b *Button) marshal() map[string]interface{} {
 	if b.Label != "" {
 		btn["label"] = b.Label
 	} else {
-		panic("Button label can not be empty")
+		return nil, errors.New("button label can not be empty")
 	}
 	if b.Emoji.Id != "" {
 		btn["emoji"] = b.Emoji
@@ -53,7 +53,7 @@ func (b *Button) marshal() map[string]interface{} {
 	if b.Disabled {
 		btn["disabled"] = true
 	}
-	return btn
+	return btn, nil
 }
 
 type SelectOption struct {
@@ -64,18 +64,18 @@ type SelectOption struct {
 	Default     bool // default: false
 }
 
-func (so *SelectOption) marshal() map[string]interface{} {
+func (so *SelectOption) marshal() (map[string]interface{}, error) {
 	op := map[string]interface{}{}
 	if so.Label != "" && len(so.Label) <= 100 {
 		op["label"] = so.Label
 	} else {
-		panic("Name of the option can contain max 100 characters and must not be empty")
+		return nil, errors.New("name of the option can contain max 100 characters and must not be empty")
 	}
 	op["value"] = so.Value
 	if len(so.Description) <= 100 {
 		op["description"] = so.Description
 	} else {
-		panic("Description of the option can contain max 100 characters")
+		return nil, errors.New("description of the select option can contain max 100 characters")
 	}
 	if so.Emoji.Id != "" {
 		op["emoji"] = so.Emoji
@@ -83,7 +83,7 @@ func (so *SelectOption) marshal() map[string]interface{} {
 	if so.Default {
 		op["default"] = true
 	}
-	return op
+	return op, nil
 }
 
 type SelectMenu struct {
@@ -96,7 +96,7 @@ type SelectMenu struct {
 	OnSelection func(bot Bot, comp Context, values ...string)
 }
 
-func (s *SelectMenu) marshal() map[string]interface{} {
+func (s *SelectMenu) marshal() (map[string]interface{}, error) {
 	s.customId = assignId()
 	if s.OnSelection != nil {
 		callbackTasks[s.customId] = s.OnSelection
@@ -127,9 +127,13 @@ func (s *SelectMenu) marshal() map[string]interface{} {
 	}
 	menu["options"] = []map[string]interface{}{}
 	for _, option := range s.Options {
-		menu["options"] = append(menu["options"].([]map[string]interface{}), option.marshal())
+		op, err := option.marshal()
+		if err != nil {
+			return nil, err
+		}
+		menu["options"] = append(menu["options"].([]map[string]interface{}), op)
 	}
-	return menu
+	return menu, nil
 }
 
 type actionRow struct {
@@ -191,14 +195,22 @@ func (v *View) marshal() ([]interface{}, error) {
 			if v.OnTimeout != nil {
 				timeoutTasks[button.customId] = []interface{}{v.Timeout, v.OnTimeout}
 			}
-			tmp["components"] = append(tmp["components"].([]interface{}), button.marshal())
+			btn, err := button.marshal()
+			if err != nil {
+				return nil, err
+			}
+			tmp["components"] = append(tmp["components"].([]interface{}), btn)
 		}
 		if !hasButton {
 			undo[row.SelectMenu.customId] = true
 			if v.OnTimeout != nil {
 				timeoutTasks[row.SelectMenu.customId] = []interface{}{v.Timeout, v.OnTimeout}
 			}
-			tmp["components"] = append(tmp["components"].([]interface{}), row.SelectMenu.marshal())
+			menu, err := row.SelectMenu.marshal()
+			if err != nil {
+				return nil, err
+			}
+			tmp["components"] = append(tmp["components"].([]interface{}), menu)
 		}
 		if len(undo) > 0 {
 			c = append(c, tmp)

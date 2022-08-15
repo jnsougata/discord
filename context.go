@@ -302,8 +302,8 @@ func (c *Context) Edit(resp Response) error {
 		go r.fire()
 	} else {
 		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-		body := map[string]interface{}{"type": 7, "data": body}
-		r := multipartReq("POST", path, body, "", resp.Files...)
+		pl := map[string]interface{}{"type": 7, "data": body}
+		r := multipartReq("POST", path, pl, "", resp.Files...)
 		go r.fire()
 	}
 	return err
