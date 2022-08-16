@@ -81,12 +81,11 @@ func (m *Modal) marshal() (map[string]interface{}, error) {
 				"components": []map[string]interface{}{},
 			}
 			fieldValue, err := field.marshal()
-			if err == nil {
-				row["components"] = append(row["components"].([]map[string]interface{}), fieldValue)
-				modal["components"] = append(modal["components"].([]map[string]interface{}), row)
-			} else {
+			if err != nil {
 				return nil, err
 			}
+			row["components"] = append(row["components"].([]map[string]interface{}), fieldValue)
+			modal["components"] = append(modal["components"].([]map[string]interface{}), row)
 		}
 	}
 	if len(m.SelectMenus) > 0 {
@@ -95,7 +94,11 @@ func (m *Modal) marshal() (map[string]interface{}, error) {
 				"type":       1,
 				"components": []map[string]interface{}{},
 			}
-			row["components"] = append(row["components"].([]map[string]interface{}), menu.marshal())
+			menuValue, err := menu.marshal()
+			if err != nil {
+				return nil, err
+			}
+			row["components"] = append(row["components"].([]map[string]interface{}), menuValue)
 			modal["components"] = append(modal["components"].([]map[string]interface{}), row)
 		}
 	}

@@ -6,40 +6,64 @@ import (
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
-	"net/http"
 	"time"
 )
 
 var s = state{}
 
+type sharding struct {
+	URL               string `json:"url"`
+	Shards            int    `json:"shards"`
+	SessionStartLimit struct {
+		Total          int `json:"total"`
+		Remaining      int `json:"remaining"`
+		Reset          int `json:"reset_after"`
+		MaxConcurrency int `json:"max_concurrency"`
+	} `json:"session_start_limit"`
+}
+
+type runtime struct {
+	SessionId        string      `json:"session_id"`
+	Shard            []int       `json:"shard"`
+	ResumeGatewayURL string      `json:"resume_gateway_url"`
+	Guilds           interface{} `json:"guilds"`
+	Application      struct {
+		Id    string  `json:"id"`
+		Flags float64 `json:"flags"`
+	} `json:"application"`
+}
+
 type ws struct {
-	locked     bool
-	sequence   int
-	intent     int
-	memoize    bool
-	beatSent   int64
-	beatAck    int64
-	latency    int64
-	sessionId  string
-	interval   float64
-	presence   Presence
-	self       *Bot
-	secret     string
-	queue      []Command
-	commands   map[string]interface{}
-	listeners  Listeners
-	lazyGuilds map[string]bool
+	locked           bool
+	sequence         int
+	intent           int
+	memoize          bool
+	beatSent         int64
+	beatAck          int64
+	latency          int64
+	sessionId        string
+	interval         float64
+	presence         Presence
+	self             *Bot
+	secret           string
+	queue            []Command
+	commands         map[string]interface{}
+	listeners        Listeners
+	lazyGuilds       map[string]bool
+	shardingMatrices sharding
+	runtimeMatrices  runtime
 }
 
 func (sock *ws) gateway() string {
-	data, err := http.Get("https://discord.com/api/gateway")
-	if err != nil {
-		panic(err)
-	}
-	var payload map[string]string
-	bytes, _ := io.ReadAll(data.Body)
-	_ = json.Unmarshal(bytes, &payload)
-	return fmt.Sprintf("%s?v=%s&encoding=json", payload["url"], "10")
+	version := 11
+	encoding := "json"
+	info := sharding{}
+	r := minimalReq("GET", "/gateway/bot", nil, sock.secret)
+	resp := r.fire()
+	body, _ := io.ReadAll(resp.Body)
+	_ = json.Unmarshal(body, &info)
+	sock.shardingMatrices = info
+	return fmt.Sprintf("%s?v=%d&encoding=%s", info.URL, version, encoding)
 }
 
 func (sock *ws) keepAlive(conn *websocket.Conn, dur int) {
@@ -51,24 +75,30 @@ func (sock *ws) keepAlive(conn *websocket.Conn, dur int) {
 }
 
 func (sock *ws) identify(conn *websocket.Conn, intent int) {
-
-	d := map[string]interface{}{
+	var bucket []map[string]interface{}
+	identification := map[string]interface{}{
 		"token":   sock.secret,
 		"intents": intent,
 	}
-	d["properties"] = map[string]string{
+	identification["properties"] = map[string]string{
 		"os":      "linux",
 		"browser": "discord",
 		"device":  "discord",
 	}
 	if sock.presence.Activity.Name != "" {
-		d["presence"] = sock.presence.Marshal()
+		identification["presence"] = sock.presence.Marshal()
 	}
 	if sock.presence.OnMobile {
-		d["properties"].(map[string]string)["browser"] = "Discord iOS"
+		identification["properties"].(map[string]string)["browser"] = "Discord iOS"
 	}
-	payload := map[string]interface{}{"op": 2, "d": d}
-	_ = conn.WriteJSON(payload)
+	for i := 0; i < sock.shardingMatrices.Shards; i++ {
+		identification["shard"] = []int{i, sock.shardingMatrices.Shards}
+		payload := map[string]interface{}{"op": 2, "d": identification}
+		bucket = append(bucket, payload)
+	}
+	for _, v := range bucket {
+		_ = conn.WriteJSON(v)
+	}
 }
 
 func (sock *ws) registerCommand(com Command, applicationId string) {
@@ -128,32 +158,27 @@ func (sock *ws) run(token string) {
 			Sequence int                    `json:"s"`
 			Data     map[string]interface{} `json:"d"`
 		}
-		_ = conn.ReadJSON(&wsmsg)
+		err = conn.ReadJSON(&wsmsg)
+		if err != nil {
+			log.Println(err)
+		}
 		sock.sequence = wsmsg.Sequence
 		if sock.listeners.OnSocketReceive != nil {
 			go sock.listeners.OnSocketReceive(wsmsg)
 		}
+		r := runtime{}
 		switch wsmsg.Event {
-
 		case string(OnReady):
 			sock.lazyGuilds = map[string]bool{}
-			var runtime struct {
-				SessionId   string `json:"session_id"`
-				Sequence    int
-				Application struct {
-					Id    string  `json:"id"`
-					Flags float64 `json:"flags"`
-				} `json:"application"`
-				Guilds interface{} `json:"guilds"`
-			}
 			ba, _ := json.Marshal(wsmsg.Data)
-			_ = json.Unmarshal(ba, &runtime)
-			for _, guild := range runtime.Guilds.([]interface{}) {
+			_ = json.Unmarshal(ba, &r)
+			sock.runtimeMatrices = r
+			for _, guild := range r.Guilds.([]interface{}) {
 				id := guild.(map[string]interface{})["id"].(string)
 				sock.lazyGuilds[id] = true
 			}
 			for _, cmd := range sock.queue {
-				go sock.registerCommand(cmd, runtime.Application.Id)
+				go sock.registerCommand(cmd, r.Application.Id)
 			}
 			sock.self = Converter{
 				token:   sock.secret,
@@ -164,8 +189,8 @@ func (sock *ws) run(token string) {
 			if sock.listeners.OnReady != nil {
 				go sock.listeners.OnReady(*sock.self)
 			} else {
-				fmt.Println(fmt.Sprintf("Logged in as %s#%s (ID:%s)",
-					sock.self.Username, sock.self.Discriminator, sock.self.Id))
+				fmt.Println(fmt.Sprintf("[Shard:%d] Logged in as %s#%s (Id:%s)",
+					sock.runtimeMatrices.Shard[0], sock.self.Username, sock.self.Discriminator, sock.self.Id))
 				fmt.Println("---------")
 			}
 		case string(OnGuildJoin):
@@ -207,7 +232,7 @@ func (sock *ws) run(token string) {
 				"d": map[string]interface{}{
 					"token":      token,
 					"sequence":   sock.sequence,
-					"session_id": sock.sessionId,
+					"session_id": sock.runtimeMatrices.SessionId,
 				},
 			})
 		case 9:
@@ -285,7 +310,6 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 							go hook(*sock.self, *ctx, *ro)
 						}
 					}
-
 				case 2:
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
