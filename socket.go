@@ -75,7 +75,6 @@ func (sock *ws) keepAlive(conn *websocket.Conn, dur int) {
 }
 
 func (sock *ws) identify(conn *websocket.Conn, intent int) {
-	var bucket []map[string]interface{}
 	identification := map[string]interface{}{
 		"token":   sock.secret,
 		"intents": intent,
@@ -91,14 +90,8 @@ func (sock *ws) identify(conn *websocket.Conn, intent int) {
 	if sock.presence.OnMobile {
 		identification["properties"].(map[string]string)["browser"] = "Discord iOS"
 	}
-	for i := 0; i < sock.shardingMatrices.Shards; i++ {
-		identification["shard"] = []int{i, sock.shardingMatrices.Shards}
-		payload := map[string]interface{}{"op": 2, "d": identification}
-		bucket = append(bucket, payload)
-	}
-	for _, v := range bucket {
-		_ = conn.WriteJSON(v)
-	}
+	payload := map[string]interface{}{"op": 2, "d": identification}
+	_ = conn.WriteJSON(payload)
 }
 
 func (sock *ws) registerCommand(com Command, applicationId string) {
@@ -189,8 +182,8 @@ func (sock *ws) run(token string) {
 			if sock.listeners.OnReady != nil {
 				go sock.listeners.OnReady(*sock.self)
 			} else {
-				fmt.Println(fmt.Sprintf("[Shard:%d] Logged in as %s#%s (Id:%s)",
-					sock.runtimeMatrices.Shard[0], sock.self.Username, sock.self.Discriminator, sock.self.Id))
+				fmt.Println(fmt.Sprintf("Logged in as %s#%s (Id:%s)",
+					sock.self.Username, sock.self.Discriminator, sock.self.Id))
 				fmt.Println("---------")
 			}
 		case string(OnGuildJoin):
