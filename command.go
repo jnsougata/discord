@@ -213,8 +213,8 @@ type Command struct {
 	Name              string      // must be less than 32 characters
 	Description       string      // must be less than 100 characters
 	Options           []Option
-	DMPermission      bool // default: false
-	MemberPermissions int  // default: send_messages
+	DMPermission      bool       // default: false
+	MemberPermissions Permission // default: send_messages
 	GuildId           int64
 	subcommands       []SubCommand
 	subcommandGroups  []SubcommandGroup
@@ -317,11 +317,11 @@ func (cmd *Command) marshal() (
 		}
 	}
 	body["dm_permission"] = cmd.DMPermission
-	switch cmd.MemberPermissions {
+	switch int(cmd.MemberPermissions) {
 	case 0:
 		body["default_member_permissions"] = 1 << 11
 	default:
-		body["default_member_permissions"] = cmd.MemberPermissions
+		body["default_member_permissions"] = int(cmd.MemberPermissions)
 	}
 	return body, cmd.Execute, cmd.GuildId
 }

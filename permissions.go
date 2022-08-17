@@ -95,7 +95,7 @@ func (p *permissions) Check(total Permission, other Permission) bool {
 	return int(total)&int(other) == int(other)
 }
 
-func Permissions() *permissions {
+func perms() *permissions {
 	return &permissions{
 		CreateInstantInvite:     Permission(zero),
 		KickMembers:             Permission(one),
@@ -140,6 +140,8 @@ func Permissions() *permissions {
 		ModerateMembers:         Permission(forty),
 	}
 }
+
+var Permissions = perms()
 
 func (p *permissions) check(all Permission, permissions ...Permission) bool {
 	res := true
