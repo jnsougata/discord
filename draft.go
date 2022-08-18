@@ -14,7 +14,7 @@ type Draft struct {
 	DeleteAfter    float64
 }
 
-func (d *Draft) marshal() map[string]interface{} {
+func (d *Draft) marshal() (map[string]interface{}, error) {
 	body := map[string]interface{}{}
 	if d.Content != "" {
 		body["content"] = d.Content
@@ -32,7 +32,12 @@ func (d *Draft) marshal() map[string]interface{} {
 	}
 	body["embeds"] = []map[string]interface{}{}
 	for _, em := range d.Embeds {
-		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.Marshal())
+		emd, err := em.marshal()
+		if err != nil {
+			return nil, err
+		} else {
+			body["embeds"] = append(body["embeds"].([]map[string]interface{}), emd)
+		}
 	}
 	if checkTrueFile(d.File) {
 		d.Files = append([]File{d.File}, d.Files...)
@@ -50,5 +55,5 @@ func (d *Draft) marshal() map[string]interface{} {
 			d.Files = append(d.Files[:i], d.Files[i+1:]...)
 		}
 	}
-	return body
+	return body, nil
 }

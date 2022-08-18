@@ -1,7 +1,7 @@
 package discord
 
 func checkTrueEmbed(em Embed) bool {
-	return em.Title != "" || em.Description != "" || len(em.Fields) > 0 || em.Author.IconUrl != "" || em.Author.Name != "" || em.Footer.IconUrl != "" || em.Footer.Text != "" || em.Image.Url != "" || em.Thumbnail.Url != ""
+	return em.Title != "" || em.Description != "" || len(em.Fields) > 0 || em.Author.IconURL != "" || em.Author.Name != "" || em.Footer.IconURL != "" || em.Footer.Text != "" || em.Image.URL != "" || em.Thumbnail.URL != ""
 }
 
 func checkTrueFile(f File) bool {

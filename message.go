@@ -38,8 +38,8 @@ type Message struct {
 	token              string
 }
 
-func (m *Message) Reply(draft Draft) Message {
-	body := draft.marshal()
+func (m *Message) Reply(draft Draft) (Message, error) {
+	body, err := draft.marshal()
 	body["message_reference"] = map[string]interface{}{"message_id": m.Id}
 	path := fmt.Sprintf("/channels/%s/messages", m.ChannelId)
 	r := multipartReq("POST", path, body, m.token, draft.Files...)
@@ -53,7 +53,7 @@ func (m *Message) Reply(draft Draft) Message {
 			msg.Delete()
 		}()
 	}
-	return msg
+	return msg, err
 }
 
 func (m *Message) Delete() {

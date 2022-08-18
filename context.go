@@ -56,7 +56,12 @@ func (resp *Response) marshal() (map[string]interface{}, error) {
 	}
 	body["embeds"] = []map[string]interface{}{}
 	for _, em := range resp.Embeds {
-		body["embeds"] = append(body["embeds"].([]map[string]interface{}), em.Marshal())
+		emd, err := em.marshal()
+		if err != nil {
+			return nil, err
+		} else {
+			body["embeds"] = append(body["embeds"].([]map[string]interface{}), emd)
+		}
 	}
 	if resp.TTS {
 		body["tts"] = true
