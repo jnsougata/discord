@@ -121,8 +121,7 @@ func (sock *ws) registerCommand(com Command, applicationId string) {
 			delete(groupBucket, com.uniqueId)
 		}
 	} else {
-		log.Fatal(
-			fmt.Sprintf("Failed to register command {%s}.\nMessage: %s", com.Name, d["message"]))
+		log.Fatal(fmt.Sprintf("Failed to register command {%s}. Message: %s", com.Name, d["message"]))
 	}
 }
 
@@ -142,7 +141,7 @@ func (sock *ws) run(token string) {
 	s.Users = make(map[string]*User)
 	conn, _, err := websocket.DefaultDialer.Dial(sock.gateway(), nil)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
 	for {
 		var wsmsg struct {
@@ -153,7 +152,7 @@ func (sock *ws) run(token string) {
 		}
 		err = conn.ReadJSON(&wsmsg)
 		if err != nil {
-			log.Println(err)
+			fmt.Println(err)
 		}
 		sock.sequence = wsmsg.Sequence
 		if sock.listeners.OnSocketReceive != nil {
@@ -277,8 +276,8 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 		case 2:
 			if task, ok := sock.commands[ctx.Data.Id]; ok {
 				switch ctx.Data.Type {
-				case 1:
-					if int(ctx.Data.Options[0].Type) == 1 {
+				case int(SlashCommand):
+					if len(ctx.Data.Options) > 0 && int(ctx.Data.Options[0].Type) == 1 {
 						type subcommand struct {
 							Name    string   `json:"name"`
 							Options []Option `json:"options"`
@@ -303,13 +302,13 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 							go hook(*sock.self, *ctx, *ro)
 						}
 					}
-				case 2:
+				case int(UserCommand):
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
 					ctx.TargetUser = *Converter{token: sock.secret, payload: rud.(map[string]interface{})}.User()
 					hook := task.(func(bot Bot, ctx Context, _ map[string]Option))
 					go hook(*sock.self, *ctx, nil)
-				case 3:
+				case int(MessageCommand):
 					target := ctx.Data.TargetId
 					rmd := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
 					ctx.TargetMessage = *Converter{token: sock.secret, payload: rmd.(map[string]interface{})}.Message()
