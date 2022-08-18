@@ -16,36 +16,63 @@ const (
 	MessageCommand CommandType = 3
 )
 
-type OptionType int
+type optionType int
 
-const (
-	StringOption      OptionType = 3
-	IntegerOption     OptionType = 4
-	BooleanOption     OptionType = 5
-	UserOption        OptionType = 6
-	ChannelOption     OptionType = 7
-	RoleOption        OptionType = 8
-	MentionableOption OptionType = 9
-	NumberOption      OptionType = 10
-	AttachmentOption  OptionType = 11
-)
+type optionTypes struct {
+	String      optionType
+	Integer     optionType
+	Boolean     optionType
+	User        optionType
+	Channel     optionType
+	Role        optionType
+	Mentionable optionType
+	Number      optionType
+	Attachment  optionType
+}
 
-type ChannelType int
+var OptionTypes = optionTypes{
+	String:      optionType(3),
+	Integer:     optionType(4),
+	Boolean:     optionType(5),
+	User:        optionType(6),
+	Channel:     optionType(7),
+	Role:        optionType(8),
+	Mentionable: optionType(9),
+	Number:      optionType(10),
+	Attachment:  optionType(11),
+}
 
-const (
-	GuildText          ChannelType = 0
-	DMText             ChannelType = 1
-	GuildVoice         ChannelType = 2
-	GroupDM            ChannelType = 3
-	GuildCategory      ChannelType = 4
-	GuildNews          ChannelType = 5
-	GuildNewsThread    ChannelType = 10
-	GuildPublicThread  ChannelType = 11
-	GuildPrivateThread ChannelType = 12
-	GuildStageVoice    ChannelType = 13
-	GuildDirectory     ChannelType = 14
-	GuildForum         ChannelType = 15
-)
+type channelType int
+
+type channelTypes struct {
+	GuildText          channelType
+	DMText             channelType
+	GuildVoice         channelType
+	GroupDM            channelType
+	GuildCategory      channelType
+	GuildNews          channelType
+	GuildNewsThread    channelType
+	GuildPublicThread  channelType
+	GuildPrivateThread channelType
+	GuildStageVoice    channelType
+	GuildDirectory     channelType
+	GuildForum         channelType
+}
+
+var ChannelTypes = channelTypes{
+	GuildText:          channelType(0),
+	DMText:             channelType(1),
+	GuildVoice:         channelType(2),
+	GroupDM:            channelType(3),
+	GuildCategory:      channelType(4),
+	GuildNews:          channelType(5),
+	GuildNewsThread:    channelType(10),
+	GuildPublicThread:  channelType(11),
+	GuildPrivateThread: channelType(12),
+	GuildStageVoice:    channelType(13),
+	GuildDirectory:     channelType(14),
+	GuildForum:         channelType(15),
+}
 
 type Choice struct {
 	Name  string      `json:"name"`
@@ -54,7 +81,7 @@ type Choice struct {
 
 type Option struct {
 	Name         string     `json:"name"`
-	Type         OptionType `json:"type"`
+	Type         optionType `json:"type"`
 	Value        any        `json:"Value"`   // available only during option parsing
 	Focused      bool       `json:"focused"` // available only during option parsing
 	Description  string
@@ -64,7 +91,7 @@ type Option struct {
 	MinValue     int64         // allowed for: IntegerOption, NumberOption
 	MaxValue     int64         // allowed for: IntegerOption, NumberOption
 	AutoComplete bool          // allowed for: StringOption, NumberOption, IntegerOption
-	ChannelTypes []ChannelType // allowed for: ChannelOption
+	ChannelTypes []channelType // allowed for: ChannelOption
 	Choices      []Choice      // allowed for: StringOption, IntegerOption, NumberOption
 }
 
@@ -90,7 +117,7 @@ func (o *Option) marshal() map[string]interface{} {
 	body["type"] = o.Type
 	body["required"] = o.Required
 	switch o.Type {
-	case StringOption:
+	case OptionTypes.String:
 		if o.MinLength > 0 && o.MaxLength > 0 && o.MinLength < o.MaxLength {
 			body["min_length"] = o.MinLength
 			body["max_length"] = o.MaxLength
@@ -100,7 +127,7 @@ func (o *Option) marshal() map[string]interface{} {
 		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case IntegerOption:
+	case OptionTypes.Integer:
 		body["min_value"] = o.MinValue
 		body["max_value"] = o.MaxValue
 		if len(o.Choices) > 0 {
@@ -108,7 +135,7 @@ func (o *Option) marshal() map[string]interface{} {
 		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case NumberOption:
+	case OptionTypes.Number:
 		body["min_value"] = o.MinValue
 		body["max_value"] = o.MaxValue
 		if len(o.Choices) > 0 {
@@ -116,31 +143,10 @@ func (o *Option) marshal() map[string]interface{} {
 		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case ChannelOption:
-		allowed := map[int]ChannelType{
-			int(GuildText):          GuildText,
-			int(DMText):             DMText,
-			int(GuildVoice):         GuildVoice,
-			int(GroupDM):            GroupDM,
-			int(GuildCategory):      GuildCategory,
-			int(GuildNews):          GuildNews,
-			int(GuildNewsThread):    GuildNewsThread,
-			int(GuildPublicThread):  GuildPublicThread,
-			int(GuildPrivateThread): GuildPrivateThread,
-			int(GuildStageVoice):    GuildStageVoice,
-			int(GuildDirectory):     GuildDirectory,
-			int(GuildForum):         GuildForum,
-		}
-		func() {
-			for _, channelType := range o.ChannelTypes {
-				if _, ok := allowed[int(channelType)]; !ok {
-					panic(fmt.Sprintf("Channel type (%d) is not allowed", channelType))
-				}
-			}
-		}()
+	case OptionTypes.Channel:
 		body["channel_types"] = []int{}
-		for _, channelType := range o.ChannelTypes {
-			body["channel_types"] = append(body["channel_types"].([]int), int(channelType))
+		for _, chanType := range o.ChannelTypes {
+			body["channel_types"] = append(body["channel_types"].([]int), int(chanType))
 		}
 	}
 	return body

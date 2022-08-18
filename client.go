@@ -1,9 +1,8 @@
 package discord
 
 // New is a function that represents a connection to discord.
-func New(intent Intent) *connection {
-	return &connection{
-		ws: &ws{intent: int(intent)}}
+func New(intent intent) *connection {
+	return &connection{ws: &ws{intent: int(intent)}}
 }
 
 type connection struct {

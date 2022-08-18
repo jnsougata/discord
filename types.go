@@ -1,6 +1,5 @@
 package discord
 
-const (
 // OnResumed                      = "RESUMED"
 // onReconnect                 	  = "RECONNECT" --> handle internally
 // onInvalidSession 		      = "INVALID_SESSION" --> handle internally
@@ -62,4 +61,3 @@ const (
 // onVoiceServerUpdate            = "VOICE_SERVER_UPDATE"
 // onWebhooksUpdate               = "WEBHOOKS_UPDATE"
 // OnSocketReceive 				  = "SOCKET_RECEIVE"
-)

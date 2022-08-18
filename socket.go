@@ -316,7 +316,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					go hook(*sock.self, *ctx, nil)
 				}
 			} else {
-				log.Printf("Command (%s) is not implemented.", ctx.Data.Id)
+				fmt.Printf("Command (%s) is not implemented.", ctx.Data.Id)
 			}
 
 		case 3:
