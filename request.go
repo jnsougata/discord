@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
 const root = "https://discord.com/api/v10"
 
-type router struct {
+type multipartRouter struct {
 	Token  string
 	Path   string
 	Data   map[string]interface{}
@@ -19,7 +18,7 @@ type router struct {
 	Method string
 }
 
-func (obj *router) fire() *http.Response {
+func (obj *multipartRouter) fire() *http.Response {
 	body, boundary := multipartWriter(obj.Data, obj.Files)
 	r, _ := http.NewRequest(obj.Method, root+obj.Path, io.NopCloser(bytes.NewBuffer(body)))
 	r.Header.Set(`Content-Type`, fmt.Sprintf(`multipart/form-data; boundary=%s`, boundary))
@@ -29,19 +28,22 @@ func (obj *router) fire() *http.Response {
 	client := &http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Client ran into an error while sending the request:", err)
 	}
 	if resp.StatusCode > 304 {
-		em := make(map[string]interface{})
+		e := make(map[string]interface{})
 		b, _ := io.ReadAll(resp.Body)
-		_ = json.Unmarshal(b, &em)
-		log.Println(em)
+		_ = json.Unmarshal(b, &e)
+		errcode := e["code"].(float64)
+		msg := e["message"].(string)
+		fmt.Println(fmt.Sprintf("HTTP error %v occured (%v: %s)", resp.StatusCode, errcode, msg))
 	}
 	return resp
 }
 
-func multipartReq(method string, path string, data map[string]interface{}, token string, files ...File) *router {
-	return &router{Token: token, Path: path, Data: data, Method: method, Files: files}
+func multipartReq(
+	method string, path string, data map[string]interface{}, token string, files ...File) *multipartRouter {
+	return &multipartRouter{Token: token, Path: path, Data: data, Method: method, Files: files}
 }
 
 type minimalRouter struct {
@@ -65,7 +67,15 @@ func (obj *minimalRouter) fire() *http.Response {
 	client := &http.Client{}
 	resp, err := client.Do(r)
 	if err != nil {
-		log.Println(err)
+		fmt.Println("Client ran into an error while sending the request:", err)
+	}
+	if resp.StatusCode > 304 {
+		e := make(map[string]interface{})
+		b, _ := io.ReadAll(resp.Body)
+		_ = json.Unmarshal(b, &e)
+		errcode := e["code"].(float64)
+		msg := e["message"].(string)
+		fmt.Println(fmt.Sprintf("HTTP error %v occured (%v: %s)", resp.StatusCode, errcode, msg))
 	}
 	return resp
 }
