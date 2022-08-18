@@ -288,7 +288,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 						ds, _ := json.Marshal(d)
 						var subcommands []subcommand
 						_ = json.Unmarshal(ds, &subcommands)
-						scos := makeOptions(subcommands[0].Options, ctx.Data.Resolved, sock.secret)
+						scos := buildRO(subcommands[0].Options, ctx.Data.Resolved, sock.secret)
 						if sc, okz := subcommandBucket[ctx.Data.Id]; okz {
 							scTask, exists := sc.(map[string]interface{})[ctx.Data.Options[0].Name]
 							if exists {
@@ -299,7 +299,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					} else {
 						hook := task.(func(bot Bot, ctx Context, options ResolvedOptions))
 						if hook != nil {
-							ro := makeOptions(ctx.Data.Options, ctx.Data.Resolved, sock.secret)
+							ro := buildRO(ctx.Data.Options, ctx.Data.Resolved, sock.secret)
 							go hook(*sock.self, *ctx, *ro)
 						}
 					}

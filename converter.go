@@ -212,7 +212,7 @@ func (c Converter) Context() *Context {
 	return ctx
 }
 
-func makeOptions(options []Option, resolved map[string]interface{}, secret string) *ResolvedOptions {
+func buildRO(options []Option, resolved map[string]interface{}, secret string) *ResolvedOptions {
 	ro := ResolvedOptions{}
 	ro.strings = map[string]string{}
 	ro.integers = map[string]int64{}

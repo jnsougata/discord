@@ -49,14 +49,14 @@ const (
 
 type Choice struct {
 	Name  string      `json:"name"`
-	Value interface{} `json:"value"` // same type as type of option
+	Value interface{} `json:"Value"` // same type as type of option
 }
 
 type Option struct {
-	Name         string      `json:"name"`
-	Type         OptionType  `json:"type"`
-	Value        interface{} `json:"value"`   // available only during option parsing
-	Focused      bool        `json:"focused"` // available only during option parsing
+	Name         string     `json:"name"`
+	Type         OptionType `json:"type"`
+	Value        any        `json:"Value"`   // available only during option parsing
+	Focused      bool       `json:"focused"` // available only during option parsing
 	Description  string
 	Required     bool
 	MinLength    int           // allowed for: StringOption
@@ -70,10 +70,10 @@ type Option struct {
 
 func (o *Option) marshal() map[string]interface{} {
 	if o.Value != nil {
-		panic("Option {value} must not be set while creating an option")
+		panic("Option field {Value} must not be set while creating an option")
 	}
 	if o.Focused {
-		panic("Option {focused} must not be set while creating an option")
+		panic("Option field {focused} must not be set while creating an option")
 	}
 	body := map[string]interface{}{}
 	if o.Name == "" || o.Description == "" {
