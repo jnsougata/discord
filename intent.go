@@ -3,54 +3,28 @@ package discord
 type intent int
 
 type intents struct {
-	Guilds                intent
-	GuildMembers          intent
-	GuildBans             intent
-	GuildEmojis           intent
-	GuildIntegrations     intent
-	GuildWebhooks         intent
-	GuildInvites          intent
-	GuildVoiceStates      intent
-	GuildPresences        intent
-	GuildMessages         intent
-	GuildMessageReactions intent
-	GuildMessageTyping    intent
-	DM                    intent
-	DMReactions           intent
-	DMTyping              intent
-	MessageContent        intent
-	GuildScheduleEvents   intent
-	AutoModConfiguration  intent
-	AutoModExecution      intent
+	Members   intent
+	Contents  intent
+	Presences intent
 }
 
 var Intents = intents{
-	Guilds:                intent(1 << 0),
-	GuildMembers:          intent(1 << 1),
-	GuildBans:             intent(1 << 2),
-	GuildEmojis:           intent(1 << 3),
-	GuildIntegrations:     intent(1 << 4),
-	GuildWebhooks:         intent(1 << 5),
-	GuildInvites:          intent(1 << 6),
-	GuildVoiceStates:      intent(1 << 7),
-	GuildPresences:        intent(1 << 8),
-	GuildMessages:         intent(1 << 9),
-	GuildMessageReactions: intent(1 << 10),
-	GuildMessageTyping:    intent(1 << 11),
-	DM:                    intent(1 << 12),
-	DMReactions:           intent(1 << 13),
-	DMTyping:              intent(1 << 14),
-	MessageContent:        intent(1 << 15),
-	GuildScheduleEvents:   intent(1 << 16),
-	AutoModConfiguration:  intent(1 << 17),
-	AutoModExecution:      intent(1 << 18),
+	Members:   intent(1 << 1),
+	Contents:  intent(1 << 15),
+	Presences: intent(1 << 8),
 }
 
-func (i *intents) Make(intents ...intent) intent {
+func (i *intents) Defaults(extras ...intent) intent {
+	nums := []int{0, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 16, 17, 18}
 	ini := 0
-	for _, intent := range intents {
-		ini |= 1 << int(intent)
+	for _, i := range nums {
+		ini |= 1 << i
 	}
+
+	for _, e := range extras {
+		ini |= int(e)
+	}
+
 	return intent(ini)
 }
 
