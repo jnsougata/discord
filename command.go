@@ -9,19 +9,13 @@ var groupBucket = map[string]interface{}{}
 var subcommandBucket = map[string]interface{}{}
 var autocompleteBucket = map[string]interface{}{}
 
-type commandType int
+type CommandKind int
 
-type commandTypes struct {
-	Slash   commandType
-	User    commandType
-	Message commandType
-}
-
-var CommandTypes = commandTypes{
-	Slash:   commandType(1),
-	User:    commandType(2),
-	Message: commandType(3),
-}
+const (
+	SlashCommand   CommandKind = 1
+	UserCommand    CommandKind = 2
+	MessageCommand CommandKind = 3
+)
 
 type SubCommand struct {
 	Name        string
@@ -30,8 +24,8 @@ type SubCommand struct {
 	Execute     func(bot Bot, ctx Context, options ResolvedOptions)
 }
 
-func (sc *SubCommand) AddOption(option Option) error {
-	if len(sc.options) == 25 {
+func (sub *SubCommand) AddOption(option Option) error {
+	if len(sub.options) == 25 {
 		return errors.New("application command can only have max 25 options")
 	}
 	if option.Name == "" {
@@ -45,6 +39,9 @@ func (sc *SubCommand) AddOption(option Option) error {
 	}
 	if len(option.Description) > 100 {
 		return errors.New(fmt.Sprintf("option (%s) {description} must be less than 100 characters", option.Name))
+	}
+	if int(option.Type) == 0 {
+		return errors.New(fmt.Sprintf("option (%s) {type} must be set", option.Name))
 	}
 	switch option.Type {
 	case StringOption:
@@ -82,26 +79,26 @@ func (sc *SubCommand) AddOption(option Option) error {
 				"option {autocomplete} can only be used with {string} or {integer} or {number} type options")
 		}
 	}
-	sc.options = append(sc.options, option)
+	sub.options = append(sub.options, option)
 	return nil
 }
 
-func (sc *SubCommand) marshal() map[string]interface{} {
+func (sub *SubCommand) marshal() map[string]interface{} {
 	body := map[string]interface{}{}
-	if sc.Name == "" || sc.Description == "" {
+	if sub.Name == "" || sub.Description == "" {
 		panic("Both command {name} or {description} must be set")
 	}
-	if len(sc.Name) > 32 {
-		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", sc.Name))
+	if len(sub.Name) > 32 {
+		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", sub.Name))
 	}
-	if len(sc.Description) > 100 {
-		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", sc.Name))
+	if len(sub.Description) > 100 {
+		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", sub.Name))
 	}
 	body["type"] = 1
-	body["name"] = sc.Name
-	body["description"] = sc.Description
+	body["name"] = sub.Name
+	body["description"] = sub.Description
 	body["options"] = []map[string]interface{}{}
-	for _, option := range sc.options {
+	for _, option := range sub.options {
 		body["options"] = append(body["options"].([]map[string]interface{}), option.marshal())
 	}
 	return body
@@ -142,7 +139,7 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 // Command is a base type for all discord application commands
 type Command struct {
 	uniqueId          string
-	Type              commandType // defaults to chat input
+	Type              CommandKind // defaults to chat input
 	Name              string      // must be less than 32 characters
 	Description       string      // must be less than 100 characters
 	options           []Option
@@ -170,6 +167,9 @@ func (cmd *Command) AddOption(option Option) error {
 	}
 	if len(option.Description) > 100 {
 		return errors.New(fmt.Sprintf("option (%s) {description} must be less than 100 characters", option.Name))
+	}
+	if int(option.Type) == 0 {
+		return errors.New(fmt.Sprintf("option (%s) {type} must be set", option.Name))
 	}
 	switch option.Type {
 	case StringOption:
@@ -225,20 +225,20 @@ func (cmd *Command) marshal() (
 	map[string]interface{}, func(bot Bot, ctx Context, options ResolvedOptions), int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {
-	case CommandTypes.Message:
-		body["type"] = int(CommandTypes.Message)
-		cmd.Type = CommandTypes.Message
-	case CommandTypes.User:
-		body["type"] = int(CommandTypes.User)
-		cmd.Type = CommandTypes.User
+	case MessageCommand:
+		body["type"] = int(MessageCommand)
+	case UserCommand:
+		body["type"] = int(UserCommand)
+	case SlashCommand:
+		body["type"] = int(SlashCommand)
 	default:
-		body["type"] = int(CommandTypes.Slash)
-		cmd.Type = CommandTypes.Slash
+		body["type"] = int(SlashCommand)
+		cmd.Type = SlashCommand
 	}
 	cmd.uniqueId = assignId()
 	body["name"] = cmd.Name
 	switch cmd.Type {
-	case CommandTypes.Slash:
+	case SlashCommand:
 		if cmd.Description == "" {
 			panic("Command {description} must be set")
 		}
@@ -267,7 +267,7 @@ func (cmd *Command) marshal() (
 		if cmd.AutocompleteTask != nil {
 			autocompleteBucket[cmd.uniqueId] = cmd.AutocompleteTask
 		}
-	case CommandTypes.User:
+	case UserCommand:
 		if cmd.Description != "" {
 			panic("Command {description} must not be set for user commands")
 		}
@@ -280,7 +280,7 @@ func (cmd *Command) marshal() (
 		if len(cmd.subcommandGroups) > 0 {
 			panic("Command cannot have subcommand groups for user commands")
 		}
-	case CommandTypes.Message:
+	case MessageCommand:
 		if cmd.Description != "" {
 			panic("Command {description} must not be set for message commands")
 		}

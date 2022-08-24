@@ -44,6 +44,6 @@ func (m *Member) fillUser(u *User) {
 }
 
 func (m *Member) HasPermissions(permissions ...Permission) bool {
-	total, _ := strconv.Atoi(m.Permissions)
-	return Permissions.check(Permission(total), permissions...)
+	p, _ := strconv.Atoi(m.Permissions)
+	return Permissions.Check(Permission(p), permissions...)
 }

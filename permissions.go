@@ -2,50 +2,6 @@ package discord
 
 type Permission int
 
-const (
-	zero        = 1 << iota
-	one         = 1 << iota
-	two         = 1 << iota
-	three       = 1 << iota
-	four        = 1 << iota
-	five        = 1 << iota
-	six         = 1 << iota
-	seven       = 1 << iota
-	eight       = 1 << iota
-	nine        = 1 << iota
-	ten         = 1 << iota
-	eleven      = 1 << iota
-	twelve      = 1 << iota
-	thirteen    = 1 << iota
-	fourteen    = 1 << iota
-	fifteen     = 1 << iota
-	sixteen     = 1 << iota
-	seventeen   = 1 << iota
-	eighteen    = 1 << iota
-	nineteen    = 1 << iota
-	twenty      = 1 << iota
-	twentyone   = 1 << iota
-	twentytwo   = 1 << iota
-	twentythree = 1 << iota
-	twentyfour  = 1 << iota
-	twentyfive  = 1 << iota
-	twentysix   = 1 << iota
-	twentyseven = 1 << iota
-	twentyeight = 1 << iota
-	twentynine  = 1 << iota
-	thirty      = 1 << iota
-	thirtyone   = 1 << iota
-	thirtytwo   = 1 << iota
-	thirtythree = 1 << iota
-	thirtyfour  = 1 << iota
-	thirtyfive  = 1 << iota
-	thirtysix   = 1 << iota
-	thirtyseven = 1 << iota
-	thirtyeight = 1 << iota
-	thirtynine  = 1 << iota
-	forty       = 1 << iota
-)
-
 type permissions struct {
 	CreateInstantInvite     Permission
 	KickMembers             Permission
@@ -91,62 +47,63 @@ type permissions struct {
 	All                     Permission
 }
 
-func (p *permissions) Check(total Permission, other Permission) bool {
-	return int(total)&int(other) == int(other)
+func (p *permissions) Check(reference Permission, others ...Permission) bool {
+	check := true
+	for _, o := range others {
+		check = check && int(reference)&int(o) == int(o)
+	}
+	return check
 }
 
 func perms() *permissions {
+	whole := 0
+	for n := 0; n < 41; n++ {
+		whole |= 1 << n
+	}
 	return &permissions{
-		CreateInstantInvite:     Permission(zero),
-		KickMembers:             Permission(one),
-		BanMembers:              Permission(two),
-		Administrator:           Permission(three),
-		ManageChannels:          Permission(four),
-		ManageGuild:             Permission(five),
-		AddReactions:            Permission(six),
-		ViewAuditLog:            Permission(seven),
-		PrioritySpeaker:         Permission(eight),
-		Stream:                  Permission(nine),
-		ViewChannel:             Permission(ten),
-		SendMessages:            Permission(eleven),
-		SendTTSMessages:         Permission(twelve),
-		ManageMessages:          Permission(thirteen),
-		EmbedLinks:              Permission(fourteen),
-		AttachFiles:             Permission(fifteen),
-		ReadMessageHistory:      Permission(sixteen),
-		MentionEveryone:         Permission(seventeen),
-		UseExternalEmojis:       Permission(eighteen),
-		ViewGuildInsights:       Permission(nineteen),
-		Connect:                 Permission(twenty),
-		Speak:                   Permission(twentyone),
-		MuteMembers:             Permission(twentytwo),
-		DeafenMembers:           Permission(twentythree),
-		MoveMembers:             Permission(twentyfour),
-		UseVAD:                  Permission(twentyfive),
-		ChangeNickname:          Permission(twentysix),
-		ManageNicknames:         Permission(twentyseven),
-		ManageRoles:             Permission(twentyeight),
-		ManageWebhooks:          Permission(twentynine),
-		ManageEmojisAndStickers: Permission(thirty),
-		UseApplicationCommands:  Permission(thirtyone),
-		RequestToSpeak:          Permission(thirtytwo),
-		ManageEvents:            Permission(thirtythree),
-		ManageThreads:           Permission(thirtyfour),
-		CreatePublicThreads:     Permission(thirtyfive),
-		CreatePrivateThreads:    Permission(thirtysix),
-		UseExternalStickers:     Permission(thirtyseven),
-		SendMessageInThreads:    Permission(thirtyeight),
-		UseEmbeddedActivity:     Permission(thirtynine),
-		ModerateMembers:         Permission(forty),
+		All:                     Permission(whole),
+		CreateInstantInvite:     Permission(1 << 0),
+		KickMembers:             Permission(1 << 1),
+		BanMembers:              Permission(1 << 2),
+		Administrator:           Permission(1 << 3),
+		ManageChannels:          Permission(1 << 4),
+		ManageGuild:             Permission(1 << 5),
+		AddReactions:            Permission(1 << 6),
+		ViewAuditLog:            Permission(1 << 7),
+		PrioritySpeaker:         Permission(1 << 8),
+		Stream:                  Permission(1 << 9),
+		ViewChannel:             Permission(1 << 10),
+		SendMessages:            Permission(1 << 11),
+		SendTTSMessages:         Permission(1 << 12),
+		ManageMessages:          Permission(1 << 13),
+		EmbedLinks:              Permission(1 << 14),
+		AttachFiles:             Permission(1 << 15),
+		ReadMessageHistory:      Permission(1 << 16),
+		MentionEveryone:         Permission(1 << 17),
+		UseExternalEmojis:       Permission(1 << 18),
+		ViewGuildInsights:       Permission(1 << 19),
+		Connect:                 Permission(1 << 20),
+		Speak:                   Permission(1 << 21),
+		MuteMembers:             Permission(1 << 22),
+		DeafenMembers:           Permission(1 << 23),
+		MoveMembers:             Permission(1 << 24),
+		UseVAD:                  Permission(1 << 25),
+		ChangeNickname:          Permission(1 << 26),
+		ManageNicknames:         Permission(1 << 27),
+		ManageRoles:             Permission(1 << 28),
+		ManageWebhooks:          Permission(1 << 29),
+		ManageEmojisAndStickers: Permission(1 << 30),
+		UseApplicationCommands:  Permission(1 << 31),
+		RequestToSpeak:          Permission(1 << 32),
+		ManageEvents:            Permission(1 << 33),
+		ManageThreads:           Permission(1 << 34),
+		CreatePublicThreads:     Permission(1 << 35),
+		CreatePrivateThreads:    Permission(1 << 36),
+		UseExternalStickers:     Permission(1 << 37),
+		SendMessageInThreads:    Permission(1 << 38),
+		UseEmbeddedActivity:     Permission(1 << 39),
+		ModerateMembers:         Permission(1 << 40),
 	}
 }
 
 var Permissions = perms()
-
-func (p *permissions) check(all Permission, permissions ...Permission) bool {
-	res := true
-	for _, p := range permissions {
-		res = res && (int(all)&int(p) == int(p))
-	}
-	return res
-}

@@ -14,7 +14,7 @@ var Intents = intents{
 	Presences: intent(1 << 8),
 }
 
-func (i *intents) Defaults(extras ...intent) intent {
+func (i *intents) Default(extras ...intent) intent {
 	nums := []int{0, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 16, 17, 18}
 	ini := 0
 	for _, i := range nums {

@@ -1,35 +1,50 @@
 package discord
 
-type OptionType int
+type OptionKind int
 
 const (
-	StringOption      OptionType = 3
-	IntegerOption     OptionType = 4
-	BooleanOption     OptionType = 5
-	UserOption        OptionType = 6
-	ChannelOption     OptionType = 7
-	RoleOption        OptionType = 8
-	MentionableOption OptionType = 9
-	NumberOption      OptionType = 10
-	AttachmentOption  OptionType = 11
+	StringOption      OptionKind = 3
+	IntegerOption     OptionKind = 4
+	BooleanOption     OptionKind = 5
+	UserOption        OptionKind = 6
+	ChannelOption     OptionKind = 7
+	RoleOption        OptionKind = 8
+	MentionableOption OptionKind = 9
+	NumberOption      OptionKind = 10
+	AttachmentOption  OptionKind = 11
 )
 
-type ChannelType int
+type ChannelKind int
 
-const (
-	GuildText          ChannelType = 0
-	DMText             ChannelType = 1
-	GuildVoice         ChannelType = 2
-	GroupDM            ChannelType = 3
-	GuildCategory      ChannelType = 4
-	GuildNews          ChannelType = 5
-	GuildNewsThread    ChannelType = 10
-	GuildPublicThread  ChannelType = 11
-	GuildPrivateThread ChannelType = 12
-	GuildStageVoice    ChannelType = 13
-	GuildDirectory     ChannelType = 14
-	GuildForum         ChannelType = 15
-)
+type channelKinds struct {
+	Text          ChannelKind
+	DM            ChannelKind
+	Voice         ChannelKind
+	GroupDM       ChannelKind
+	Category      ChannelKind
+	News          ChannelKind
+	NewsThread    ChannelKind
+	PublicThread  ChannelKind
+	PrivateThread ChannelKind
+	StageVoice    ChannelKind
+	Directory     ChannelKind
+	Forum         ChannelKind
+}
+
+var ChannelKinds = channelKinds{
+	Text:          ChannelKind(0),
+	DM:            ChannelKind(1),
+	Voice:         ChannelKind(2),
+	GroupDM:       ChannelKind(3),
+	Category:      ChannelKind(4),
+	News:          ChannelKind(5),
+	NewsThread:    ChannelKind(10),
+	PublicThread:  ChannelKind(11),
+	PrivateThread: ChannelKind(12),
+	StageVoice:    ChannelKind(13),
+	Directory:     ChannelKind(14),
+	Forum:         ChannelKind(15),
+}
 
 type Choice struct {
 	Name  string      `json:"name"`
@@ -38,9 +53,7 @@ type Choice struct {
 
 type Option struct {
 	Name         string     `json:"name"`
-	Type         OptionType `json:"type"`
-	Value        any        `json:"Value"`   // available only during option parsing
-	Focused      bool       `json:"focused"` // available only during option parsing
+	Type         OptionKind `json:"type"`
 	Description  string
 	Required     bool
 	MinLength    int           // allowed for: StringOption
@@ -48,8 +61,10 @@ type Option struct {
 	MinValue     int64         // allowed for: IntegerOption, NumberOption
 	MaxValue     int64         // allowed for: IntegerOption, NumberOption
 	AutoComplete bool          // allowed for: StringOption, NumberOption, IntegerOption
-	ChannelTypes []ChannelType // allowed for: ChannelOption
+	ChannelTypes []ChannelKind // allowed for: ChannelOption
 	Choices      []Choice      // allowed for: StringOption, IntegerOption, NumberOption
+	Value        any           `json:"Value"`   // available only during option parsing
+	Focused      bool          `json:"focused"` // available only during option parsing
 }
 
 func (o *Option) marshal() map[string]interface{} {
