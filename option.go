@@ -1,17 +1,17 @@
 package discord
 
-type OptionKind int
+type optionKind int
 
 const (
-	StringOption      OptionKind = 3
-	IntegerOption     OptionKind = 4
-	BooleanOption     OptionKind = 5
-	UserOption        OptionKind = 6
-	ChannelOption     OptionKind = 7
-	RoleOption        OptionKind = 8
-	MentionableOption OptionKind = 9
-	NumberOption      OptionKind = 10
-	AttachmentOption  OptionKind = 11
+	stringOption      optionKind = 3
+	integerOption     optionKind = 4
+	booleanOption     optionKind = 5
+	userOption        optionKind = 6
+	channelOption     optionKind = 7
+	roleOption        optionKind = 8
+	mentionableOption optionKind = 9
+	numberOption      optionKind = 10
+	attachmentOption  optionKind = 11
 )
 
 type ChannelKind int
@@ -51,30 +51,32 @@ type Choice struct {
 	Value interface{} `json:"Value"` // same type as type of option
 }
 
-type Option struct {
+type option struct {
 	Name         string     `json:"name"`
-	Type         OptionKind `json:"type"`
+	Type         optionKind `json:"type"`
 	Description  string
 	Required     bool
-	MinLength    int           // allowed for: StringOption
-	MaxLength    int           // allowed for: StringOption
-	MinValue     int64         // allowed for: IntegerOption, NumberOption
-	MaxValue     int64         // allowed for: IntegerOption, NumberOption
-	AutoComplete bool          // allowed for: StringOption, NumberOption, IntegerOption
-	ChannelTypes []ChannelKind // allowed for: ChannelOption
-	Choices      []Choice      // allowed for: StringOption, IntegerOption, NumberOption
+	MinLength    int           // allowed for: stringOption
+	MaxLength    int           // allowed for: stringOption
+	MinValue     int           // allowed for: integerOption
+	MaxValue     int           // allowed for: integerOption
+	MaxValueNum  float64       // allowed for: numberOption
+	MinValueNum  float64       // allowed for: numberOption
+	AutoComplete bool          // allowed for: stringOption, numberOption, integerOption
+	ChannelTypes []ChannelKind // allowed for: channelOption
+	Choices      []Choice      // allowed for: stringOption, integerOption, numberOption
 	Value        any           `json:"Value"`   // available only during option parsing
 	Focused      bool          `json:"focused"` // available only during option parsing
 }
 
-func (o *Option) marshal() map[string]interface{} {
+func (o *option) marshal() map[string]interface{} {
 	body := map[string]interface{}{}
 	body["name"] = o.Name
 	body["type"] = o.Type
 	body["required"] = o.Required
 	body["description"] = o.Description
 	switch o.Type {
-	case StringOption:
+	case stringOption:
 		body["min_length"] = o.MinLength
 		body["max_length"] = o.MaxLength
 		if len(o.Choices) > 0 {
@@ -82,7 +84,7 @@ func (o *Option) marshal() map[string]interface{} {
 		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case IntegerOption:
+	case integerOption:
 		body["min_value"] = o.MinValue
 		body["max_value"] = o.MaxValue
 		if len(o.Choices) > 0 {
@@ -90,15 +92,15 @@ func (o *Option) marshal() map[string]interface{} {
 		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case NumberOption:
-		body["min_value"] = o.MinValue
-		body["max_value"] = o.MaxValue
+	case numberOption:
+		body["min_value"] = o.MinValueNum
+		body["max_value"] = o.MaxValueNum
 		if len(o.Choices) > 0 {
 			body["choices"] = o.Choices
 		} else if o.AutoComplete {
 			body["auto_complete"] = true
 		}
-	case ChannelOption:
+	case channelOption:
 		body["channel_types"] = []int{}
 		for _, c := range o.ChannelTypes {
 			body["channel_types"] = append(body["channel_types"].([]int), int(c))

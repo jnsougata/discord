@@ -72,7 +72,7 @@ type Data struct {
 	Name     string                 `json:"name"`
 	Type     int                    `json:"type"`
 	Resolved map[string]interface{} `json:"resolved"`
-	Options  []Option               `json:"options"`
+	Options  []option               `json:"options"`
 	GuildId  string                 `json:"guild_id"`
 	TargetId string                 `json:"target_id"`
 }
@@ -153,7 +153,7 @@ type Context struct {
 	Guild          Guild
 	Author         Member
 	token          string
-	commandData    []Option
+	commandData    []option
 	componentData  componentData
 	raw            map[string]interface{}
 }

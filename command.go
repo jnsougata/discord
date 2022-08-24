@@ -20,86 +20,266 @@ const (
 type SubCommand struct {
 	Name        string
 	Description string
-	options     []Option
+	options     []option
 	Execute     func(bot Bot, ctx Context, options ResolvedOptions)
 }
 
-func (sub *SubCommand) AddOption(option Option) error {
-	if len(sub.options) == 25 {
+func (scmd *SubCommand) OptionSTRING(
+	name string,
+	description string,
+	required bool,
+	minLength int,
+	maxLength int,
+	autocomplete bool,
+	choices ...Choice,
+) error {
+	if len(scmd.options) == 25 {
 		return errors.New("application command can only have max 25 options")
 	}
-	if option.Name == "" {
-		return errors.New("option {name} must be set")
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
 	}
-	if len(option.Name) > 32 {
-		return errors.New(fmt.Sprintf("option (%s) {name} must be less than 32 characters", option.Name))
+	if minLength < 0 || maxLength < 0 {
+		return errors.New("option {MinLength} and {MaxLength} must be greater than 0")
 	}
-	if option.Description == "" {
-		return errors.New(fmt.Sprintf("option (%s) {description} must be set", option.Name))
+	if minLength > 6000 || maxLength > 6000 {
+		return errors.New("option length must be less than equals to 6000")
 	}
-	if len(option.Description) > 100 {
-		return errors.New(fmt.Sprintf("option (%s) {description} must be less than 100 characters", option.Name))
+	if minLength == 0 {
+		minLength = 1
 	}
-	if int(option.Type) == 0 {
-		return errors.New(fmt.Sprintf("option (%s) {type} must be set", option.Name))
+	if maxLength == 0 {
+		maxLength = 6000
 	}
-	switch option.Type {
-	case StringOption:
-		if option.MaxLength < option.MinLength {
-			return errors.New("option {MaxLength} must be greater than {MinLength}")
-		}
-		if option.MinLength < 0 || option.MaxLength < 0 {
-			return errors.New("option {MinLength} and {MaxLength} must be greater than 0")
-		}
-		if option.MaxLength > 6000 || option.MinLength > 6000 {
-			return errors.New("option length must be less than equals to 6000")
-		}
-		if option.MaxLength == 0 {
-			option.MaxLength = 6000
-		}
-		if option.MinLength == 0 {
-			option.MinLength = 1
-		}
-	case NumberOption:
-		if option.MaxValue < option.MinValue {
-			return errors.New("option {MaxValue} must be greater than {MinValue}")
-		}
-	case IntegerOption:
-		if option.MaxValue < option.MinValue {
-			return errors.New("option {MaxValue} must be greater than {MinValue}")
-		}
+	if maxLength < minLength {
+		return errors.New("option {maxLength} must be greater than {minLength}")
 	}
-	if !(option.Type == StringOption || option.Type == IntegerOption || option.Type == NumberOption) {
-		if len(option.Choices) > 0 {
-			return errors.New(
-				"option {choices} can only be used with {string} or {integer} or {number} type options")
-		}
-		if option.AutoComplete {
-			return errors.New(
-				"option {autocomplete} can only be used with {string} or {integer} or {number} type options")
-		}
+	if len(choices) > 0 && autocomplete {
+		return errors.New("option {choices} can only be used with {autocomplete} disabled")
 	}
-	sub.options = append(sub.options, option)
+	scmd.options = append(scmd.options, option{
+		Type:         stringOption,
+		Name:         name,
+		Description:  description,
+		MinLength:    minLength,
+		MaxLength:    maxLength,
+		AutoComplete: autocomplete,
+		Choices:      choices,
+		Required:     required,
+	})
 	return nil
 }
 
-func (sub *SubCommand) marshal() map[string]interface{} {
+func (scmd *SubCommand) OptionINTEGER(
+	name string,
+	description string,
+	required bool,
+	minValue int,
+	maxValue int,
+	autocomplete bool,
+	choices ...Choice,
+) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	if minValue > maxValue {
+		return errors.New("option {minValue} must be less than {maxValue}")
+	}
+	if len(choices) > 0 && autocomplete {
+		return errors.New("option {choices} can only be used with {autocomplete} disabled")
+	}
+	scmd.options = append(scmd.options, option{
+		Type:         integerOption,
+		Name:         name,
+		Description:  description,
+		MinValue:     minValue,
+		MaxValue:     maxValue,
+		AutoComplete: autocomplete,
+		Choices:      choices,
+		Required:     required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) OptionBOOLEAN(name string, description string, required bool) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	scmd.options = append(scmd.options, option{
+		Type:        booleanOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) OptionUSER(name string, description string, required bool) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	scmd.options = append(scmd.options, option{
+		Type:        userOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) OptionCHANNEL(name string, description string, required bool, channelTypes ...ChannelKind) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	kinds := map[int]ChannelKind{
+		0:  ChannelKinds.Text,
+		1:  ChannelKinds.DM,
+		2:  ChannelKinds.GroupDM,
+		3:  ChannelKinds.Voice,
+		4:  ChannelKinds.Category,
+		5:  ChannelKinds.News,
+		10: ChannelKinds.NewsThread,
+		11: ChannelKinds.PublicThread,
+		12: ChannelKinds.PrivateThread,
+		13: ChannelKinds.StageVoice,
+		14: ChannelKinds.Directory,
+		15: ChannelKinds.Forum,
+	}
+	for _, ch := range channelTypes {
+		if _, ok := kinds[int(ch)]; !ok {
+			return errors.New(fmt.Sprintf("option {ChannelTypes} contains invalid channel kind (%d)", ch))
+		}
+	}
+	scmd.options = append(scmd.options, option{
+		Type:         channelOption,
+		Name:         name,
+		Description:  description,
+		ChannelTypes: channelTypes,
+		Required:     required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) OptionROLE(name string, description string, required bool) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	scmd.options = append(scmd.options, option{
+		Type:        roleOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) OptionMENTIONABLE(name string, description string, required bool) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	scmd.options = append(scmd.options, option{
+		Type:        mentionableOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) OptionNUMBER(
+	name string,
+	description string,
+	required bool,
+	minValue float64,
+	maxValue float64,
+	autocomplete bool,
+	choices ...Choice,
+) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	if minValue > maxValue {
+		return errors.New("option {minValue} must be less than {maxValue}")
+	}
+	if len(choices) > 0 && autocomplete {
+		return errors.New("option {choices} can only be used with {autocomplete} disabled")
+	}
+	scmd.options = append(scmd.options, option{
+		Type:         numberOption,
+		Name:         name,
+		Description:  description,
+		MinValueNum:  minValue,
+		MaxValueNum:  maxValue,
+		AutoComplete: autocomplete,
+		Choices:      choices,
+		Required:     required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) OptionATTACHMENT(name string, description string, required bool) error {
+	if len(scmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	scmd.options = append(scmd.options, option{
+		Type:        attachmentOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (scmd *SubCommand) marshal() map[string]interface{} {
 	body := map[string]interface{}{}
-	if sub.Name == "" || sub.Description == "" {
+	if scmd.Name == "" || scmd.Description == "" {
 		panic("Both command {name} or {description} must be set")
 	}
-	if len(sub.Name) > 32 {
-		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", sub.Name))
+	if len(scmd.Name) > 32 {
+		panic(fmt.Sprintf("Command (%s) {name} must be less than 32 characters", scmd.Name))
 	}
-	if len(sub.Description) > 100 {
-		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", sub.Name))
+	if len(scmd.Description) > 100 {
+		panic(fmt.Sprintf("Command (%s) {description} must be less than 100 characters", scmd.Name))
 	}
 	body["type"] = 1
-	body["name"] = sub.Name
-	body["description"] = sub.Description
+	body["name"] = scmd.Name
+	body["description"] = scmd.Description
 	body["options"] = []map[string]interface{}{}
-	for _, option := range sub.options {
-		body["options"] = append(body["options"].([]map[string]interface{}), option.marshal())
+	for _, o := range scmd.options {
+		body["options"] = append(body["options"].([]map[string]interface{}), o.marshal())
 	}
 	return body
 }
@@ -142,7 +322,7 @@ type Command struct {
 	Type              CommandKind // defaults to chat input
 	Name              string      // must be less than 32 characters
 	Description       string      // must be less than 100 characters
-	options           []Option
+	options           []option
 	DMPermission      bool       // default: false
 	MemberPermissions Permission // default: send_messages
 	GuildId           int64
@@ -152,62 +332,242 @@ type Command struct {
 	AutocompleteTask  func(bot Bot, ctx Context, choices ...Choice)
 }
 
-func (cmd *Command) AddOption(option Option) error {
+func (cmd *Command) OptionSTRING(
+	name string,
+	description string,
+	required bool,
+	minLength int,
+	maxLength int,
+	autocomplete bool,
+	choices ...Choice,
+) error {
 	if len(cmd.options) == 25 {
 		return errors.New("application command can only have max 25 options")
 	}
-	if option.Name == "" {
-		return errors.New("option {name} must be set")
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
 	}
-	if len(option.Name) > 32 {
-		return errors.New(fmt.Sprintf("option (%s) {name} must be less than 32 characters", option.Name))
+	if minLength < 0 || maxLength < 0 {
+		return errors.New("option {MinLength} and {MaxLength} must be greater than 0")
 	}
-	if option.Description == "" {
-		return errors.New(fmt.Sprintf("option (%s) {description} must be set", option.Name))
+	if minLength > 6000 || maxLength > 6000 {
+		return errors.New("option length must be less than equals to 6000")
 	}
-	if len(option.Description) > 100 {
-		return errors.New(fmt.Sprintf("option (%s) {description} must be less than 100 characters", option.Name))
+	if minLength == 0 {
+		minLength = 1
 	}
-	if int(option.Type) == 0 {
-		return errors.New(fmt.Sprintf("option (%s) {type} must be set", option.Name))
+	if maxLength == 0 {
+		maxLength = 6000
 	}
-	switch option.Type {
-	case StringOption:
-		if option.MaxLength < option.MinLength {
-			return errors.New("option {MaxLength} must be greater than {MinLength}")
-		}
-		if option.MinLength < 0 || option.MaxLength < 0 {
-			return errors.New("option {MinLength} and {MaxLength} must be greater than 0")
-		}
-		if option.MaxLength > 6000 || option.MinLength > 6000 {
-			return errors.New("option length must be less than equals to 6000")
-		}
-		if option.MaxLength == 0 {
-			option.MaxLength = 6000
-		}
-		if option.MinLength == 0 {
-			option.MinLength = 1
-		}
-	case NumberOption:
-		if option.MaxValue < option.MinValue {
-			return errors.New("option {MaxValue} must be greater than {MinValue}")
-		}
-	case IntegerOption:
-		if option.MaxValue < option.MinValue {
-			return errors.New("option {MaxValue} must be greater than {MinValue}")
+	if maxLength < minLength {
+		return errors.New("option {maxLength} must be greater than {minLength}")
+	}
+	if len(choices) > 0 && autocomplete {
+		return errors.New("option {choices} can only be used with {autocomplete} disabled")
+	}
+	cmd.options = append(cmd.options, option{
+		Type:         stringOption,
+		Name:         name,
+		Description:  description,
+		MinLength:    minLength,
+		MaxLength:    maxLength,
+		AutoComplete: autocomplete,
+		Choices:      choices,
+		Required:     required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionINTEGER(
+	name string,
+	description string,
+	required bool,
+	minValue int,
+	maxValue int,
+	autocomplete bool,
+	choices ...Choice,
+) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	if minValue > maxValue {
+		return errors.New("option {minValue} must be less than {maxValue}")
+	}
+	if len(choices) > 0 && autocomplete {
+		return errors.New("option {choices} can only be used with {autocomplete} disabled")
+	}
+	cmd.options = append(cmd.options, option{
+		Type:         integerOption,
+		Name:         name,
+		Description:  description,
+		MinValue:     minValue,
+		MaxValue:     maxValue,
+		AutoComplete: autocomplete,
+		Choices:      choices,
+		Required:     required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionBOOLEAN(name string, description string, required bool) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	cmd.options = append(cmd.options, option{
+		Type:        booleanOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionUSER(name string, description string, required bool) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	cmd.options = append(cmd.options, option{
+		Type:        userOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionCHANNEL(name string, description string, required bool, channelTypes ...ChannelKind) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	kinds := map[int]ChannelKind{
+		0:  ChannelKinds.Text,
+		1:  ChannelKinds.DM,
+		2:  ChannelKinds.GroupDM,
+		3:  ChannelKinds.Voice,
+		4:  ChannelKinds.Category,
+		5:  ChannelKinds.News,
+		10: ChannelKinds.NewsThread,
+		11: ChannelKinds.PublicThread,
+		12: ChannelKinds.PrivateThread,
+		13: ChannelKinds.StageVoice,
+		14: ChannelKinds.Directory,
+		15: ChannelKinds.Forum,
+	}
+	for _, ch := range channelTypes {
+		if _, ok := kinds[int(ch)]; !ok {
+			return errors.New(fmt.Sprintf("option {ChannelTypes} contains invalid channel kind (%d)", ch))
 		}
 	}
-	if !(option.Type == StringOption || option.Type == IntegerOption || option.Type == NumberOption) {
-		if len(option.Choices) > 0 {
-			return errors.New(
-				"option {choices} can only be used with {string} or {integer} or {number} type options")
-		}
-		if option.AutoComplete {
-			return errors.New(
-				"option {autocomplete} can only be used with {string} or {integer} or {number} type options")
-		}
+	cmd.options = append(cmd.options, option{
+		Type:         channelOption,
+		Name:         name,
+		Description:  description,
+		ChannelTypes: channelTypes,
+		Required:     required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionROLE(name string, description string, required bool) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
 	}
-	cmd.options = append(cmd.options, option)
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	cmd.options = append(cmd.options, option{
+		Type:        roleOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionMENTIONABLE(name string, description string, required bool) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	cmd.options = append(cmd.options, option{
+		Type:        mentionableOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionNUMBER(
+	name string,
+	description string,
+	required bool,
+	minValue float64,
+	maxValue float64,
+	autocomplete bool,
+	choices ...Choice,
+) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	if minValue > maxValue {
+		return errors.New("option {minValue} must be less than {maxValue}")
+	}
+	if len(choices) > 0 && autocomplete {
+		return errors.New("option {choices} can only be used with {autocomplete} disabled")
+	}
+	cmd.options = append(cmd.options, option{
+		Type:         numberOption,
+		Name:         name,
+		Description:  description,
+		MinValueNum:  minValue,
+		MaxValueNum:  maxValue,
+		AutoComplete: autocomplete,
+		Choices:      choices,
+		Required:     required,
+	})
+	return nil
+}
+
+func (cmd *Command) OptionATTACHMENT(name string, description string, required bool) error {
+	if len(cmd.options) == 25 {
+		return errors.New("application command can only have max 25 options")
+	}
+	err := checkNameDesc(name, description)
+	if err != nil {
+		return err
+	}
+	cmd.options = append(cmd.options, option{
+		Type:        attachmentOption,
+		Name:        name,
+		Description: description,
+		Required:    required,
+	})
 	return nil
 }
 
@@ -302,4 +662,20 @@ func (cmd *Command) marshal() (
 		body["default_member_permissions"] = int(cmd.MemberPermissions)
 	}
 	return body, cmd.Execute, cmd.GuildId
+}
+
+func checkNameDesc(name string, desc string) error {
+	if name == "" {
+		return errors.New("option {name} must be set")
+	}
+	if len(name) > 32 {
+		return errors.New(fmt.Sprintf("option (%s) {name} must be less than 32 characters", name))
+	}
+	if desc == "" {
+		return errors.New(fmt.Sprintf("option (%s) {description} must be set", name))
+	}
+	if len(desc) > 100 {
+		return errors.New(fmt.Sprintf("option (%s) {description} must be less than 100 characters", name))
+	}
+	return nil
 }

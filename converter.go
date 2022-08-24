@@ -212,7 +212,7 @@ func (c Converter) Context() *Context {
 	return ctx
 }
 
-func buildRO(options []Option, resolved map[string]interface{}, secret string) *ResolvedOptions {
+func buildRO(options []option, resolved map[string]interface{}, secret string) *ResolvedOptions {
 	ro := ResolvedOptions{}
 	ro.strings = map[string]string{}
 	ro.integers = map[string]int64{}
@@ -225,37 +225,37 @@ func buildRO(options []Option, resolved map[string]interface{}, secret string) *
 	ro.users = map[string]User{}
 	for _, option := range options {
 		newConv := Converter{token: secret}
-		if option.Type == StringOption {
+		if option.Type == stringOption {
 			ro.strings[option.Name] = option.Value.(string)
 		}
-		if option.Type == IntegerOption {
+		if option.Type == integerOption {
 			ro.integers[option.Name] = option.Value.(int64)
 		}
-		if option.Type == BooleanOption {
+		if option.Type == booleanOption {
 			ro.booleans[option.Name] = option.Value.(bool)
 		}
-		if option.Type == NumberOption {
+		if option.Type == numberOption {
 			ro.numbers[option.Name] = option.Value.(float64)
 		}
-		if option.Type == ChannelOption {
+		if option.Type == channelOption {
 			channelId := option.Value.(string)
 			newConv.payload = resolved["channels"].(map[string]interface{})[channelId]
 			ro.channels[option.Name] = *newConv.Channel()
 		}
-		if option.Type == RoleOption {
+		if option.Type == roleOption {
 			roleId := option.Value.(string)
 			newConv.payload = resolved["roles"].(map[string]interface{})[roleId]
 			ro.roles[option.Name] = *newConv.Role()
 		}
-		if option.Type == MentionableOption {
+		if option.Type == mentionableOption {
 			ro.mentionables[option.Name] = option.Value
 		}
-		if option.Type == AttachmentOption {
+		if option.Type == attachmentOption {
 			attachmentId := option.Value.(string)
 			newConv.payload = resolved["attachments"].(map[string]interface{})[attachmentId]
 			ro.attachments[option.Name] = *newConv.Attachment()
 		}
-		if option.Type == UserOption {
+		if option.Type == userOption {
 			userId := option.Value.(string)
 			newConv.payload = resolved["users"].(map[string]interface{})[userId]
 			ro.users[option.Name] = *newConv.User()

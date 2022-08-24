@@ -280,7 +280,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					if len(ctx.Data.Options) > 0 && int(ctx.Data.Options[0].Type) == 1 {
 						type subcommand struct {
 							Name    string   `json:"name"`
-							Options []Option `json:"options"`
+							Options []option `json:"options"`
 							Type    int      `json:"type"`
 						}
 						d := ctx.raw["data"].(map[string]interface{})["options"].([]interface{})
@@ -306,13 +306,13 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
 					ctx.TargetUser = *Converter{token: sock.secret, payload: rud.(map[string]interface{})}.User()
-					hook := task.(func(bot Bot, ctx Context, _ map[string]Option))
+					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
 					go hook(*sock.self, *ctx, nil)
 				case int(MessageCommand):
 					target := ctx.Data.TargetId
 					rmd := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
 					ctx.TargetMessage = *Converter{token: sock.secret, payload: rmd.(map[string]interface{})}.Message()
-					hook := task.(func(bot Bot, ctx Context, _ map[string]Option))
+					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
 					go hook(*sock.self, *ctx, nil)
 				}
 			} else {
