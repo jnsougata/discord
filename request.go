@@ -36,7 +36,9 @@ func (obj *multipartRouter) fire() *http.Response {
 		_ = json.Unmarshal(b, &e)
 		errcode := e["code"].(float64)
 		msg := e["message"].(string)
-		fmt.Println(fmt.Sprintf("HTTP error %v occured (%v: %s)", resp.StatusCode, errcode, msg))
+		fmt.Println(fmt.Sprintf(
+			"HTTP error %v occured (%v: %s) Method: %s Path: %s",
+			resp.StatusCode, errcode, msg, obj.Method, root+obj.Path))
 	}
 	return resp
 }
@@ -75,7 +77,9 @@ func (obj *minimalRouter) fire() *http.Response {
 		_ = json.Unmarshal(b, &e)
 		errcode := e["code"].(float64)
 		msg := e["message"].(string)
-		fmt.Println(fmt.Sprintf("HTTP error %v occured (%v: %s)", resp.StatusCode, errcode, msg))
+		fmt.Println(fmt.Sprintf(
+			"HTTP error %v occured (%v: %s) Method: %s Path: %s",
+			resp.StatusCode, errcode, msg, obj.Method, root+obj.Path))
 	}
 	return resp
 }
