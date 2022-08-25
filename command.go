@@ -3,6 +3,7 @@ package discord
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 var groupBucket = map[string]interface{}{}
@@ -318,18 +319,18 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 
 // Command is a base type for all discord application commands
 type Command struct {
-	uniqueId          string
-	Type              CommandKind // defaults to chat input
-	Name              string      // must be less than 32 characters
-	Description       string      // must be less than 100 characters
-	options           []option
-	DMPermission      bool       // default: false
-	MemberPermissions Permission // default: send_messages
-	GuildId           int64
-	subcommands       []SubCommand
-	subcommandGroups  []SubcommandGroup
-	Execute           func(bot Bot, ctx Context, options ResolvedOptions)
-	AutocompleteTask  func(bot Bot, ctx Context, choices ...Choice)
+	uniqueId         string
+	Type             CommandKind // defaults to chat input
+	Name             string      // must be less than 32 characters
+	Description      string      // must be less than 100 characters
+	options          []option
+	DMPermission     bool         // default: false
+	Permissions      []Permission // default: send_messages
+	GuildId          int64
+	subcommands      []SubCommand
+	subcommandGroups []SubcommandGroup
+	Execute          func(bot Bot, ctx Context, options ResolvedOptions)
+	AutocompleteTask func(bot Bot, ctx Context, choices ...Choice)
 }
 
 func (cmd *Command) OptionSTRING(
@@ -655,11 +656,14 @@ func (cmd *Command) marshal() (
 		}
 	}
 	body["dm_permission"] = cmd.DMPermission
-	switch int(cmd.MemberPermissions) {
-	case 0:
-		body["default_member_permissions"] = 1 << 11
-	default:
-		body["default_member_permissions"] = int(cmd.MemberPermissions)
+	if len(cmd.Permissions) > 0 {
+		p := 0
+		for _, permission := range cmd.Permissions {
+			p |= int(permission)
+			body["default_member_permissions"] = strconv.Itoa(p)
+		}
+	} else {
+		body["default_member_permissions"] = strconv.Itoa(1 << 11)
 	}
 	return body, cmd.Execute, cmd.GuildId
 }

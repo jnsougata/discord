@@ -1,8 +1,6 @@
 package discord
 
 import (
-	"fmt"
-	"log"
 	"os"
 )
 
@@ -12,10 +10,8 @@ type File struct {
 	Description string
 }
 
-func (f *File) AddContent(path string) {
-	bs, err := os.ReadFile(path)
-	if err != nil {
-		log.Println(fmt.Sprintf(`Error reading file for path %v`, path))
-	}
-	f.Content = bs
+func (f *File) Write(path string) error {
+	content, err := os.ReadFile(path)
+	f.Content = content
+	return err
 }

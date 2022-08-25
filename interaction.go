@@ -36,12 +36,12 @@ func (i *Interaction) OriginalResponse() Message {
 	return m
 }
 
-func (i *Interaction) Send(resp Response) error {
+func (i *Interaction) Send(response Response) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
-	body, err := resp.marshal()
+	body, err := response.marshal()
 	payload := map[string]interface{}{"type": 4, "data": body}
 	r := multipartReq(
-		"POST", path, payload, "", resp.Files...)
+		"POST", path, payload, "", response.Files...)
 	go r.fire()
 	return err
 }
@@ -69,38 +69,30 @@ func (i *Interaction) SendModal(modal Modal) error {
 	return err
 }
 
-func (i *Interaction) SendFollowup(resp Response) (Followup, error) {
+func (i *Interaction) SendFollowup(response Response) (Message, error) {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
-	body, err := resp.marshal()
-	r := multipartReq("POST", path, body, "", resp.Files...)
-	f := make(chan Followup, 1)
+	body, err := response.marshal()
+	r := multipartReq("POST", path, body, "", response.Files...)
+	m := make(chan Message, 1)
 	go func() {
 		bs, _ := io.ReadAll(r.fire().Body)
 		var msg Message
 		_ = json.Unmarshal(bs, &msg)
-		f <- Followup{
-			Id:            msg.Id,
-			Content:       msg.Content,
-			Embeds:        msg.Embeds,
-			ChannelId:     i.ChannelId,
-			Flags:         msg.Flags,
-			token:         i.Token,
-			applicationId: i.ApplicationId,
-		}
+		m <- msg
 	}()
-	return <-f, err
+	return <-m, err
 }
 
-func (i *Interaction) Edit(resp Response) error {
-	body, err := resp.marshal()
+func (i *Interaction) Edit(response Response) error {
+	body, err := response.marshal()
 	if i.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", i.ApplicationId, i.Token)
-		r := multipartReq("PATCH", path, body, "", resp.Files...)
+		r := multipartReq("PATCH", path, body, "", response.Files...)
 		go r.fire()
 	} else {
 		path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 		nbody := map[string]interface{}{"type": 7, "data": body}
-		r := multipartReq("POST", path, nbody, "", resp.Files...)
+		r := multipartReq("POST", path, nbody, "", response.Files...)
 		go r.fire()
 	}
 	return err

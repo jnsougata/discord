@@ -24,49 +24,6 @@ type componentData struct {
 	Components    []row    `json:"components"`
 }
 
-type Followup struct {
-	Id            string
-	Content       string
-	Embeds        []Embed
-	ChannelId     string
-	Flags         int
-	ctx           Context
-	token         string
-	applicationId string
-}
-
-func (f *Followup) Delete() {
-	if f.Flags|1<<6 == 1<<6|1<<2 || f.Flags == 0 {
-		path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
-		r := minimalReq("DELETE", path, nil, "")
-		go r.fire()
-	}
-}
-
-func (f *Followup) Edit(resp Response) (Followup, error) {
-	path := fmt.Sprintf("/webhooks/%s/%s/messages/%s", f.applicationId, f.token, f.Id)
-	body, err := resp.marshal()
-	body["wait"] = true
-	r := multipartReq("PATCH", path, body, "", resp.Files...)
-	fl := make(chan Followup, 1)
-	go func() {
-		bs, _ := io.ReadAll(r.fire().Body)
-		var msg Message
-		_ = json.Unmarshal(bs, &msg)
-		fl <- Followup{
-			Id:            msg.Id,
-			Content:       msg.Content,
-			Embeds:        msg.Embeds,
-			ChannelId:     msg.ChannelId,
-			Flags:         msg.Flags,
-			token:         f.token,
-			ctx:           f.ctx,
-			applicationId: f.applicationId,
-		}
-	}()
-	return <-fl, err
-}
-
 type Data struct {
 	Id       string                 `json:"id"`
 	Name     string                 `json:"name"`
@@ -167,11 +124,10 @@ func (c *Context) OriginalResponse() Message {
 	return m
 }
 
-func (c *Context) Send(resp Response) error {
+func (c *Context) Send(response Response) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-	body, err := resp.marshal()
-	r := multipartReq(
-		"POST", path, map[string]interface{}{"type": 4, "data": body}, "", resp.Files...)
+	body, err := response.marshal()
+	r := multipartReq("POST", path, map[string]interface{}{"type": 4, "data": body}, "", response.Files...)
 	go r.fire()
 	return err
 }
@@ -199,40 +155,30 @@ func (c *Context) SendModal(modal Modal) error {
 	return err
 }
 
-func (c *Context) SendFollowup(resp Response) (Followup, error) {
+func (c *Context) SendFollowup(response Response) (Message, error) {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
-	body, err := resp.marshal()
-	r := multipartReq("POST", path, body, "", resp.Files...)
-	f := make(chan Followup, 1)
+	body, err := response.marshal()
+	r := multipartReq("POST", path, body, "", response.Files...)
+	m := make(chan Message, 1)
 	go func() {
 		bs, _ := io.ReadAll(r.fire().Body)
 		var msg Message
 		_ = json.Unmarshal(bs, &msg)
-		f <- Followup{
-			Id:            msg.Id,
-			token:         c.Token,
-			Content:       msg.Content,
-			Embeds:        msg.Embeds,
-			ChannelId:     c.ChannelId,
-			Flags:         msg.Flags,
-			ctx:           *c,
-			applicationId: c.ApplicationId,
-		}
+		m <- msg
 	}()
-	val, _ := <-f
-	return val, err
+	return <-m, err
 }
 
-func (c *Context) Edit(resp Response) error {
-	body, err := resp.marshal()
+func (c *Context) Edit(response Response) error {
+	body, err := response.marshal()
 	if c.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
-		r := multipartReq("PATCH", path, body, "", resp.Files...)
+		r := multipartReq("PATCH", path, body, "", response.Files...)
 		go r.fire()
 	} else {
 		path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
-		pl := map[string]interface{}{"type": 7, "data": body}
-		r := multipartReq("POST", path, pl, "", resp.Files...)
+		p := map[string]interface{}{"type": 7, "data": body}
+		r := multipartReq("POST", path, p, "", response.Files...)
 		go r.fire()
 	}
 	return err

@@ -1,10 +1,9 @@
 package discord
 
 type Draft struct {
-	Content string
-	Embed   Embed
-	Embeds  []Embed
-	//AllowedMentions []string
+	Content        string
+	Embed          Embed
+	Embeds         []Embed
 	TTS            bool
 	View           View
 	File           File
@@ -12,6 +11,7 @@ type Draft struct {
 	SuppressEmbeds bool
 	Reference      any
 	DeleteAfter    float64
+	//AllowedMentions []string
 }
 
 func (d *Draft) marshal() (map[string]interface{}, error) {

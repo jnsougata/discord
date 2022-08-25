@@ -1,37 +1,37 @@
 package discord
 
 type Response struct {
-	Content         string
-	Embed           Embed
-	Embeds          []Embed
-	AllowedMentions []string
-	TTS             bool
-	Ephemeral       bool
-	SuppressEmbeds  bool
-	View            View
-	File            File
-	Files           []File
+	Content        string
+	Embed          Embed
+	Embeds         []Embed
+	TTS            bool
+	Ephemeral      bool
+	SuppressEmbeds bool
+	View           View
+	File           File
+	Files          []File
+	//AllowedMentions []string
 }
 
-func (resp *Response) marshal() (map[string]interface{}, error) {
+func (r *Response) marshal() (map[string]interface{}, error) {
 	flag := 0
 	body := map[string]interface{}{}
-	if resp.Content != "" {
-		body["content"] = resp.Content
+	if r.Content != "" {
+		body["content"] = r.Content
 	}
-	if checkTrueEmbed(resp.Embed) {
-		resp.Embeds = append([]Embed{resp.Embed}, resp.Embeds...)
+	if checkTrueEmbed(r.Embed) {
+		r.Embeds = append([]Embed{r.Embed}, r.Embeds...)
 	}
-	for i, em := range resp.Embeds {
+	for i, em := range r.Embeds {
 		if !checkTrueEmbed(em) {
-			resp.Embeds = append(resp.Embeds[:i], resp.Embeds[i+1:]...)
+			r.Embeds = append(r.Embeds[:i], r.Embeds[i+1:]...)
 		}
 	}
-	if len(resp.Embeds) > 10 {
-		resp.Embeds = resp.Embeds[:10]
+	if len(r.Embeds) > 10 {
+		r.Embeds = r.Embeds[:10]
 	}
 	body["embeds"] = []map[string]interface{}{}
-	for _, em := range resp.Embeds {
+	for _, em := range r.Embeds {
 		emd, err := em.marshal()
 		if err != nil {
 			return nil, err
@@ -39,29 +39,29 @@ func (resp *Response) marshal() (map[string]interface{}, error) {
 			body["embeds"] = append(body["embeds"].([]map[string]interface{}), emd)
 		}
 	}
-	if resp.TTS {
+	if r.TTS {
 		body["tts"] = true
 	}
-	if resp.Ephemeral {
+	if r.Ephemeral {
 		flag |= 1 << 6
 	}
-	if resp.SuppressEmbeds {
+	if r.SuppressEmbeds {
 		flag |= 1 << 2
 	}
-	if resp.Ephemeral || resp.SuppressEmbeds {
+	if r.Ephemeral || r.SuppressEmbeds {
 		body["flags"] = flag
 	}
-	view, err := resp.View.marshal()
+	view, err := r.View.marshal()
 	if err == nil {
 		body["components"] = view
 	} else {
 		return nil, err
 	}
-	if checkTrueFile(resp.File) {
-		resp.Files = append([]File{resp.File}, resp.Files...)
+	if checkTrueFile(r.File) {
+		r.Files = append([]File{r.File}, r.Files...)
 	}
 	body["attachments"] = []map[string]interface{}{}
-	for i, f := range resp.Files {
+	for i, f := range r.Files {
 		if checkTrueFile(f) {
 			a := map[string]interface{}{
 				"id":          i,
@@ -70,7 +70,7 @@ func (resp *Response) marshal() (map[string]interface{}, error) {
 			}
 			body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
 		} else {
-			resp.Files = append(resp.Files[:i], resp.Files[i+1:]...)
+			r.Files = append(r.Files[:i], r.Files[i+1:]...)
 		}
 	}
 	return body, nil
