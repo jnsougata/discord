@@ -58,20 +58,15 @@ type Modal struct {
 	Title       string
 	Fields      []TextInput
 	SelectMenus []SelectMenu
-}
-
-func (m *Modal) OnSubmit(handler func(bot Bot, ctx Context)) {
-	m.customId = assignId()
-	callbackTasks[m.customId] = handler
+	OnSubmit    func(bot Bot, ctx Context)
 }
 
 func (m *Modal) marshal() (map[string]interface{}, error) {
 	modal := map[string]interface{}{}
 	modal["title"] = m.Title
-	if m.customId != "" {
-		modal["custom_id"] = m.customId
-	} else {
-		modal["custom_id"] = assignId()
+	m.customId = assignId()
+	if m.OnSubmit != nil {
+		callbackTasks[m.customId] = m.OnSubmit
 	}
 	modal["components"] = []map[string]interface{}{}
 	if len(m.Fields) > 0 {

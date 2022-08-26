@@ -22,7 +22,7 @@ type Button struct {
 	Emoji    PartialEmoji
 	URL      string
 	Disabled bool
-	OnClick  func(bot Bot, comp Context)
+	OnClick  func(bot Bot, ctx Context)
 }
 
 func (b *Button) marshal() (map[string]interface{}, error) {
@@ -93,7 +93,7 @@ type SelectMenu struct {
 	MinValues   int            // default: 0
 	MaxValues   int            // default: 1
 	Disabled    bool
-	OnSelection func(bot Bot, comp Context, values ...string)
+	OnSelection func(bot Bot, ctx Context, values ...string)
 }
 
 func (s *SelectMenu) marshal() (map[string]interface{}, error) {
