@@ -174,6 +174,15 @@ func (c *Context) SendFollowup(response Response) (Message, error) {
 
 func (c *Context) Edit(response Response) error {
 	body, err := response.marshal()
+	if len(response.Embeds) == 0 {
+		body["embeds"] = []map[string]interface{}{}
+	}
+	if len(response.Files) == 0 {
+		body["attachments"] = []map[string]interface{}{}
+	}
+	if len(response.View.rows) == 0 {
+		body["components"] = []map[string]interface{}{}
+	}
 	if c.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
 		r := multipartReq("PATCH", path, body, "", response.Files...)

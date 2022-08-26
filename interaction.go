@@ -87,6 +87,15 @@ func (i *Interaction) SendFollowup(response Response) (Message, error) {
 
 func (i *Interaction) Edit(response Response) error {
 	body, err := response.marshal()
+	if len(response.Embeds) == 0 {
+		body["embeds"] = []map[string]interface{}{}
+	}
+	if len(response.Files) == 0 {
+		body["attachments"] = []map[string]interface{}{}
+	}
+	if len(response.View.rows) == 0 {
+		body["components"] = []map[string]interface{}{}
+	}
 	if i.Type == 2 {
 		path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", i.ApplicationId, i.Token)
 		r := multipartReq("PATCH", path, body, "", response.Files...)
