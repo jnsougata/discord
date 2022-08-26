@@ -41,6 +41,13 @@ func (m *Member) fillUser(u *User) {
 	m.Name = u.Username
 	m.MfaEnabled = u.MfaEnabled
 	m.Discriminator = u.Discriminator
+	m.Email = u.Email
+	m.Color = u.Color
+	m.Locale = u.Locale
+	m.Verified = u.Verified
+	m.Flags = u.Flags
+	m.PremiumType = u.PremiumType
+	m.PublicFlags = u.PublicFlags
 }
 
 func (m *Member) HasPermissions(permissions ...Permission) bool {
