@@ -38,18 +38,18 @@ type Message struct {
 	state              *state
 }
 
-func (m *Message) Reply(draft Draft) (Message, error) {
-	body, err := draft.marshal()
+func (m *Message) Reply(message Draft) (Message, error) {
+	body, err := message.marshal()
 	body["message_reference"] = map[string]interface{}{"message_id": m.Id}
 	path := fmt.Sprintf("/channels/%s/messages", m.ChannelId)
-	r := multipartReq("POST", path, body, m.state.Token, draft.Files...)
+	r := multipartReq("POST", path, body, m.state.Token, message.Files...)
 	bs, _ := io.ReadAll(r.fire().Body)
 	var msg Message
 	_ = json.Unmarshal(bs, &msg)
 	msg.state = m.state
-	if draft.DeleteAfter > 0 {
+	if message.DeleteAfter > 0 {
 		go func() {
-			time.Sleep(time.Second * time.Duration(draft.DeleteAfter))
+			time.Sleep(time.Second * time.Duration(message.DeleteAfter))
 			msg.Delete()
 		}()
 	}

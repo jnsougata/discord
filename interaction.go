@@ -33,6 +33,7 @@ func (i *Interaction) OriginalResponse() Message {
 	bs, _ := io.ReadAll(r.fire().Body)
 	var m Message
 	_ = json.Unmarshal(bs, &m)
+	m.state = i.state
 	return m
 }
 
@@ -78,6 +79,7 @@ func (i *Interaction) SendFollowup(response Response) (Message, error) {
 		bs, _ := io.ReadAll(r.fire().Body)
 		var msg Message
 		_ = json.Unmarshal(bs, &msg)
+		msg.state = i.state
 		m <- msg
 	}()
 	return <-m, err

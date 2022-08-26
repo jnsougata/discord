@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io"
-	"log"
 	"time"
 )
 
@@ -121,7 +120,7 @@ func (sock *ws) registerCommand(com Command, applicationId string) {
 			delete(groupBucket, com.uniqueId)
 		}
 	} else {
-		log.Fatal(fmt.Sprintf("Failed to register command {%s}. Message: %s", com.Name, d["message"]))
+		panic(fmt.Sprintf("Failed to register command {%s}. Message: %s", com.Name, d["message"]))
 	}
 }
 
@@ -139,6 +138,7 @@ func (sock *ws) requestMembers(conn *websocket.Conn, guildId string) {
 func (sock *ws) run(token string) {
 	s.Guilds = make(map[string]*Guild)
 	s.Users = make(map[string]*User)
+	s.Token = token
 	conn, _, err := websocket.DefaultDialer.Dial(sock.gateway(), nil)
 	if err != nil {
 		fmt.Println(err)
@@ -287,7 +287,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 						ds, _ := json.Marshal(d)
 						var subcommands []subcommand
 						_ = json.Unmarshal(ds, &subcommands)
-						scos := buildRO(subcommands[0].Options, ctx.Data.Resolved, &s)
+						scos := buildResolved(subcommands[0].Options, ctx.Data.Resolved, &s)
 						if sc, okz := subcommandBucket[ctx.Data.Id]; okz {
 							scTask, exists := sc.(map[string]interface{})[ctx.Data.Options[0].Name]
 							if exists {
@@ -298,8 +298,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					} else {
 						hook := task.(func(bot Bot, ctx Context, options ResolvedOptions))
 						if hook != nil {
-							ro := buildRO(ctx.Data.Options, ctx.Data.Resolved, &s)
-							go hook(*sock.self, *ctx, *ro)
+							go hook(*sock.self, *ctx, ResolvedOptions{})
 						}
 					}
 				case int(UserCommand):
@@ -354,7 +353,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 				delete(callbackTasks, ctx.componentData.CustomId)
 			}
 		default:
-			log.Println("Unknown interaction type: ", ctx.Type)
+			fmt.Println("Unknown interaction type: ", ctx.Type)
 		}
 	default:
 	}

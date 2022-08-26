@@ -122,6 +122,7 @@ func (c *Context) OriginalResponse() Message {
 	bs, _ := io.ReadAll(r.fire().Body)
 	var m Message
 	_ = json.Unmarshal(bs, &m)
+	m.state = c.state
 	return m
 }
 
@@ -165,6 +166,7 @@ func (c *Context) SendFollowup(response Response) (Message, error) {
 		bs, _ := io.ReadAll(r.fire().Body)
 		var msg Message
 		_ = json.Unmarshal(bs, &msg)
+		msg.state = c.state
 		m <- msg
 	}()
 	return <-m, err
