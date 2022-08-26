@@ -45,7 +45,7 @@ type Guild struct {
 	StageInstances              []map[string]interface{} `json:"stage_instances"`
 	Unavailable                 bool                     `json:"unavailable"`
 	GuildScheduledEvents        []map[string]interface{} `json:"guild_scheduled_events"`
-	token                       string
+	state                       *state
 	clientId                    string
 	Icon                        Asset
 	Banner                      Asset
@@ -60,7 +60,7 @@ type Guild struct {
 func (guild *Guild) fillMembers(objs []interface{}) {
 	var members = map[string]*Member{}
 	for _, o := range objs {
-		mo := Converter{payload: o, token: guild.token}.Member()
+		mo := converter{payload: o, state: guild.state}.Member()
 		mo.GuildId = guild.Id
 		roleIds := o.(map[string]interface{})["roles"].([]interface{})
 		roles := map[string]*Role{}
@@ -77,7 +77,7 @@ func (guild *Guild) fillMembers(objs []interface{}) {
 func (guild *Guild) fillRoles(objs []interface{}) {
 	var roles = map[string]*Role{}
 	for _, o := range objs {
-		uo := Converter{payload: o, token: guild.token}.Role()
+		uo := converter{payload: o, state: guild.state}.Role()
 		uo.GuildId = guild.Id
 		roles[uo.Id] = uo
 	}
@@ -87,7 +87,7 @@ func (guild *Guild) fillRoles(objs []interface{}) {
 func (guild *Guild) fillChannels(objs []interface{}) {
 	var channels = map[string]*Channel{}
 	for _, o := range objs {
-		uo := Converter{payload: o, token: guild.token}.Channel()
+		uo := converter{payload: o, state: guild.state}.Channel()
 		channels[uo.Id] = uo
 	}
 	guild.Channels = channels

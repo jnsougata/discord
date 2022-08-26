@@ -6,27 +6,27 @@ import (
 	"strconv"
 )
 
-type Converter struct {
-	token   string
+type converter struct {
+	state   *state
 	payload interface{}
 }
 
-func (c Converter) Bot() *Bot {
+func (c converter) Bot() *Bot {
 	bot := &Bot{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, bot)
 	return bot
 }
 
-func (c Converter) Message() *Message {
+func (c converter) Message() *Message {
 	msg := &Message{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, msg)
-	msg.token = c.token
+	msg.state = c.state
 	return msg
 }
 
-func (c Converter) Guild() *Guild {
+func (c converter) Guild() *Guild {
 	raw := c.payload.(map[string]interface{})
 	iconHash := raw["icon"]
 	bannerHash := raw["banner"]
@@ -35,7 +35,7 @@ func (c Converter) Guild() *Guild {
 	guild := &Guild{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, guild)
-	guild.token = c.token
+	guild.state = c.state
 	guild.fillRoles(raw["roles"].([]interface{}))
 	guild.fillChannels(raw["channels"].([]interface{}))
 	asset := &Asset{Format: "png", Size: 1024}
@@ -62,12 +62,12 @@ func (c Converter) Guild() *Guild {
 	return guild
 }
 
-func (c Converter) Member() *Member {
+func (c converter) Member() *Member {
 	m := &Member{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, m)
-	m.token = c.token
-	u := Converter{payload: c.payload.(map[string]interface{})["user"], token: c.token}.User()
+	m.state = c.state
+	u := converter{payload: c.payload.(map[string]interface{})["user"], state: c.state}.User()
 	s.Users[u.Id] = u
 	m.fillUser(u)
 	avatarHash := c.payload.(map[string]interface{})["avatar"]
@@ -79,11 +79,11 @@ func (c Converter) Member() *Member {
 	return m
 }
 
-func (c Converter) User() *User {
+func (c converter) User() *User {
 	u := &User{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, u)
-	u.token = c.token
+	u.state = c.state
 	avatarHash := c.payload.(map[string]interface{})["avatar"]
 	bannerHash := c.payload.(map[string]interface{})["banner"]
 	if reflect.TypeOf(avatarHash) != nil {
@@ -99,47 +99,47 @@ func (c Converter) User() *User {
 	return u
 }
 
-func (c Converter) Role() *Role {
+func (c converter) Role() *Role {
 	role := &Role{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, role)
 	return role
 }
 
-func (c Converter) Channel() *Channel {
+func (c converter) Channel() *Channel {
 	ch := &Channel{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, ch)
-	ch.token = c.token
+	ch.state = c.state
 	return ch
 }
 
-func (c Converter) Emoji() *Emoji {
+func (c converter) Emoji() *Emoji {
 	emoji := &Emoji{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, emoji)
 	return emoji
 }
 
-func (c Converter) Embed() *Embed {
+func (c converter) Embed() *Embed {
 	embed := &Embed{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, embed)
 	return embed
 }
 
-func (c Converter) Attachment() *Attachment {
+func (c converter) Attachment() *Attachment {
 	attachment := &Attachment{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, attachment)
 	return attachment
 }
 
-func (c Converter) Interaction() *Interaction {
+func (c converter) Interaction() *Interaction {
 	i := &Interaction{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, i)
-	i.token = c.token
+	i.state = c.state
 	guild, okg := s.Guilds[i.GuildId]
 	if okg {
 		i.Guild = *guild
@@ -153,7 +153,7 @@ func (c Converter) Interaction() *Interaction {
 		i.Guild = Guild{}
 		i.Channel = Channel{}
 	}
-	conv := Converter{token: i.token}
+	conv := converter{state: i.state}
 	userData := c.payload.(map[string]interface{})["user"]
 	memberData := c.payload.(map[string]interface{})["member"]
 	if reflect.TypeOf(userData) != nil {
@@ -173,12 +173,12 @@ func (c Converter) Interaction() *Interaction {
 	return i
 }
 
-func (c Converter) Context() *Context {
+func (c converter) Context() *Context {
 	ctx := &Context{}
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, ctx)
-	ctx.token = c.token
-	ctx.raw = c.payload.(map[string]interface{})
+	ctx.state = c.state
+	ctx.data = c.payload.(map[string]interface{})
 	guild, okg := s.Guilds[ctx.GuildId]
 	if okg {
 		ctx.Guild = *guild
@@ -192,7 +192,7 @@ func (c Converter) Context() *Context {
 		ctx.Guild = Guild{}
 		ctx.Channel = Channel{}
 	}
-	conv := Converter{token: ctx.token}
+	conv := converter{state: ctx.state}
 	userData := c.payload.(map[string]interface{})["user"]
 	memberData := c.payload.(map[string]interface{})["member"]
 	if reflect.TypeOf(userData) != nil {
@@ -212,7 +212,7 @@ func (c Converter) Context() *Context {
 	return ctx
 }
 
-func buildRO(options []option, resolved map[string]interface{}, secret string) *ResolvedOptions {
+func buildRO(options []option, resolved map[string]interface{}, state *state) *ResolvedOptions {
 	ro := ResolvedOptions{}
 	ro.strings = map[string]string{}
 	ro.integers = map[string]int64{}
@@ -224,7 +224,7 @@ func buildRO(options []option, resolved map[string]interface{}, secret string) *
 	ro.attachments = map[string]Attachment{}
 	ro.users = map[string]User{}
 	for _, option := range options {
-		newConv := Converter{token: secret}
+		newConv := converter{state: state}
 		if option.Type == stringOption {
 			ro.strings[option.Name] = option.Value.(string)
 		}

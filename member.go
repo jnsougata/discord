@@ -14,7 +14,7 @@ type Member struct {
 	TimeoutExpiry string           `json:"communication_disabled_until"`
 	GuildId       string           `json:"guild_id"`
 	Roles         map[string]*Role `json:"roles"`
-	token         string
+	state         *state
 	Id            string
 	Name          string
 	Discriminator string
@@ -35,7 +35,7 @@ type Member struct {
 func (m *Member) fillUser(u *User) {
 	m.Id = u.Id
 	m.Bot = u.Bot
-	m.token = u.token
+	m.state = u.state
 	m.System = u.System
 	m.Banner = u.Banner
 	m.Name = u.Username

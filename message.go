@@ -35,18 +35,18 @@ type Message struct {
 	Thread             map[string]interface{}   `json:"thread"`
 	Components         []map[string]interface{} `json:"components"`
 	Stickers           []map[string]interface{} `json:"sticker_items"`
-	token              string
+	state              *state
 }
 
 func (m *Message) Reply(draft Draft) (Message, error) {
 	body, err := draft.marshal()
 	body["message_reference"] = map[string]interface{}{"message_id": m.Id}
 	path := fmt.Sprintf("/channels/%s/messages", m.ChannelId)
-	r := multipartReq("POST", path, body, m.token, draft.Files...)
+	r := multipartReq("POST", path, body, m.state.Token, draft.Files...)
 	bs, _ := io.ReadAll(r.fire().Body)
 	var msg Message
 	_ = json.Unmarshal(bs, &msg)
-	msg.token = m.token
+	msg.state = m.state
 	if draft.DeleteAfter > 0 {
 		go func() {
 			time.Sleep(time.Second * time.Duration(draft.DeleteAfter))
@@ -58,5 +58,5 @@ func (m *Message) Reply(draft Draft) (Message, error) {
 
 func (m *Message) Delete() {
 	path := fmt.Sprintf("/channels/%s/messages/%s", m.ChannelId, m.Id)
-	go minimalReq("DELETE", path, nil, m.token).fire()
+	go minimalReq("DELETE", path, nil, m.state.Token).fire()
 }

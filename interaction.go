@@ -24,7 +24,7 @@ type Interaction struct {
 	Channel        Channel
 	Guild          Guild
 	Author         Member
-	token          string
+	state          *state
 }
 
 func (i *Interaction) OriginalResponse() Message {

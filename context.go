@@ -109,10 +109,11 @@ type Context struct {
 	Channel        Channel
 	Guild          Guild
 	Author         Member
-	token          string
-	commandData    []option
-	componentData  componentData
-	raw            map[string]interface{}
+	//token          string
+	commandData   []option
+	componentData componentData
+	data          map[string]interface{}
+	state         *state
 }
 
 func (c *Context) OriginalResponse() Message {

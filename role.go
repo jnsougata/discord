@@ -13,4 +13,5 @@ type Role struct {
 	Mentionable  bool   `json:"mentionable"`
 	Tags         string `json:"tags"`
 	GuildId      string `json:"guild_id"`
+	state        *state
 }

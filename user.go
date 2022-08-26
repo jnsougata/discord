@@ -14,7 +14,7 @@ type User struct {
 	Flags         int    `json:"flags"`
 	PremiumType   int    `json:"premium_type"`
 	PublicFlags   int    `json:"public_flags"`
-	token         string
+	state         *state
 	Avatar        Asset
 	Banner        Asset
 }

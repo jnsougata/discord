@@ -36,17 +36,17 @@ type Channel struct {
 	Permissions                string        `json:"permissions"`
 	Flags                      int           `json:"flags"`
 	TotalMessages              int           `json:"total_messages"`
-	token                      string
+	state                      *state
 }
 
 func (c *Channel) Send(draft Draft) (Message, error) {
 	body, err := draft.marshal()
 	path := fmt.Sprintf("/channels/%s/messages", c.Id)
-	r := multipartReq("POST", path, body, c.token, draft.Files...)
+	r := multipartReq("POST", path, body, c.state.Token, draft.Files...)
 	bs, _ := io.ReadAll(r.fire().Body)
 	var m Message
 	_ = json.Unmarshal(bs, &m)
-	m.token = c.token
+	m.state = c.state
 	if draft.DeleteAfter > 0 {
 		go func() {
 			time.Sleep(time.Second * time.Duration(draft.DeleteAfter))

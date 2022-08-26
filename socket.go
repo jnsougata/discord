@@ -172,8 +172,8 @@ func (sock *ws) run(token string) {
 			for _, cmd := range sock.queue {
 				go sock.registerCommand(cmd, r.Application.Id)
 			}
-			sock.self = Converter{
-				token:   sock.secret,
+			sock.self = converter{
+				state:   &s,
 				payload: wsmsg.Data["user"].(map[string]interface{}),
 			}.Bot()
 			sock.self.Latency = sock.latency
@@ -186,7 +186,7 @@ func (sock *ws) run(token string) {
 				fmt.Println("---------")
 			}
 		case string(OnGuildJoin):
-			g := Converter{token: token, payload: wsmsg.Data}.Guild()
+			g := converter{state: &s, payload: wsmsg.Data}.Guild()
 			g.clientId = sock.self.Id
 			s.Guilds[g.Id] = g
 			sock.self.Guilds = s.Guilds
@@ -237,7 +237,7 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 	if sock.locked {
 		return
 	}
-	conv := Converter{token: sock.secret, payload: data}
+	conv := converter{state: &s, payload: data}
 
 	switch dispatch {
 
@@ -283,11 +283,11 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 							Options []option `json:"options"`
 							Type    int      `json:"type"`
 						}
-						d := ctx.raw["data"].(map[string]interface{})["options"].([]interface{})
+						d := ctx.data["data"].(map[string]interface{})["options"].([]interface{})
 						ds, _ := json.Marshal(d)
 						var subcommands []subcommand
 						_ = json.Unmarshal(ds, &subcommands)
-						scos := buildRO(subcommands[0].Options, ctx.Data.Resolved, sock.secret)
+						scos := buildRO(subcommands[0].Options, ctx.Data.Resolved, &s)
 						if sc, okz := subcommandBucket[ctx.Data.Id]; okz {
 							scTask, exists := sc.(map[string]interface{})[ctx.Data.Options[0].Name]
 							if exists {
@@ -298,20 +298,20 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 					} else {
 						hook := task.(func(bot Bot, ctx Context, options ResolvedOptions))
 						if hook != nil {
-							ro := buildRO(ctx.Data.Options, ctx.Data.Resolved, sock.secret)
+							ro := buildRO(ctx.Data.Options, ctx.Data.Resolved, &s)
 							go hook(*sock.self, *ctx, *ro)
 						}
 					}
 				case int(UserCommand):
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
-					ctx.TargetUser = *Converter{token: sock.secret, payload: rud.(map[string]interface{})}.User()
+					ctx.TargetUser = *converter{state: &s, payload: rud.(map[string]interface{})}.User()
 					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
 					go hook(*sock.self, *ctx, nil)
 				case int(MessageCommand):
 					target := ctx.Data.TargetId
 					rmd := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
-					ctx.TargetMessage = *Converter{token: sock.secret, payload: rmd.(map[string]interface{})}.Message()
+					ctx.TargetMessage = *converter{state: &s, payload: rmd.(map[string]interface{})}.Message()
 					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
 					go hook(*sock.self, *ctx, nil)
 				}
