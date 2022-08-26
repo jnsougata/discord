@@ -68,7 +68,7 @@ func (c converter) Member() *Member {
 	_ = json.Unmarshal(data, m)
 	m.state = c.state
 	u := converter{payload: c.payload.(map[string]interface{})["user"], state: c.state}.User()
-	s.Users[u.Id] = u
+	shared.Users[u.Id] = u
 	m.fillUser(u)
 	avatarHash := c.payload.(map[string]interface{})["avatar"]
 	if reflect.TypeOf(avatarHash) != nil {
@@ -140,7 +140,7 @@ func (c converter) Interaction() *Interaction {
 	data, _ := json.Marshal(c.payload)
 	_ = json.Unmarshal(data, i)
 	i.state = c.state
-	guild, okg := s.Guilds[i.GuildId]
+	guild, okg := shared.Guilds[i.GuildId]
 	if okg {
 		i.Guild = *guild
 		channel, okc := guild.Channels[i.ChannelId]
@@ -179,7 +179,7 @@ func (c converter) Context() *Context {
 	_ = json.Unmarshal(data, ctx)
 	ctx.state = c.state
 	ctx.data = c.payload.(map[string]interface{})
-	guild, okg := s.Guilds[ctx.GuildId]
+	guild, okg := shared.Guilds[ctx.GuildId]
 	if okg {
 		ctx.Guild = *guild
 		channel, okc := guild.Channels[ctx.ChannelId]

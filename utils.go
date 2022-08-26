@@ -18,3 +18,8 @@ func scheduleDeletion(timeout float64, loc map[string]interface{}, ids map[strin
 		delete(loc, id)
 	}
 }
+
+func scheduleTimeoutTask(timeout float64, user Bot, ctx Context, task func(bot Bot, ctx Context)) {
+	time.Sleep(time.Duration(timeout) * time.Second)
+	task(user, ctx)
+}

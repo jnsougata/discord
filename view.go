@@ -2,22 +2,12 @@ package discord
 
 import "errors"
 
-type ButtonStyle int
-
-const (
-	BlueButton  ButtonStyle = 1
-	GreyButton  ButtonStyle = 2
-	GreenButton ButtonStyle = 3
-	RedButton   ButtonStyle = 4
-	Linkbutton  ButtonStyle = 5
-)
-
 var callbackTasks = map[string]interface{}{}
 var timeoutTasks = map[string][]interface{}{}
 
 type Button struct {
 	customId string
-	Style    ButtonStyle
+	Style    buttonStyle
 	Label    string
 	Emoji    PartialEmoji
 	URL      string
@@ -37,7 +27,7 @@ func (b *Button) marshal() (map[string]interface{}, error) {
 	if int(b.Style) != 0 {
 		btn["style"] = int(b.Style)
 	} else {
-		btn["style"] = int(BlueButton)
+		btn["style"] = int(ButtonStyles.Blue)
 	}
 	if b.Label != "" {
 		btn["label"] = b.Label
@@ -47,7 +37,7 @@ func (b *Button) marshal() (map[string]interface{}, error) {
 	if b.Emoji.Id != "" {
 		btn["emoji"] = b.Emoji
 	}
-	if b.URL != "" && b.Style == Linkbutton {
+	if b.URL != "" && b.Style == ButtonStyles.Link {
 		btn["url"] = b.URL
 	}
 	if b.Disabled {

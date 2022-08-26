@@ -10,14 +10,6 @@ var groupBucket = map[string]interface{}{}
 var subcommandBucket = map[string]interface{}{}
 var autocompleteBucket = map[string]interface{}{}
 
-type CommandKind int
-
-const (
-	SlashCommand   CommandKind = 1
-	UserCommand    CommandKind = 2
-	MessageCommand CommandKind = 3
-)
-
 type SubCommand struct {
 	Name        string
 	Description string
@@ -320,7 +312,7 @@ func (scg *SubcommandGroup) marshal() map[string]interface{} {
 // Command is a base type for all discord application commands
 type Command struct {
 	uniqueId         string
-	Type             CommandKind // defaults to chat input
+	Type             commandKind // defaults to chat input
 	Name             string      // must be less than 32 characters
 	Description      string      // must be less than 100 characters
 	options          []option
@@ -586,20 +578,20 @@ func (cmd *Command) marshal() (
 	map[string]interface{}, func(bot Bot, ctx Context, options ResolvedOptions), int64) {
 	body := map[string]interface{}{}
 	switch cmd.Type {
-	case MessageCommand:
-		body["type"] = int(MessageCommand)
-	case UserCommand:
-		body["type"] = int(UserCommand)
-	case SlashCommand:
-		body["type"] = int(SlashCommand)
+	case CommandKinds.Message:
+		body["type"] = int(CommandKinds.Message)
+	case CommandKinds.User:
+		body["type"] = int(CommandKinds.User)
+	case CommandKinds.Slash:
+		body["type"] = int(CommandKinds.Slash)
 	default:
-		body["type"] = int(SlashCommand)
-		cmd.Type = SlashCommand
+		body["type"] = int(CommandKinds.Slash)
+		cmd.Type = CommandKinds.Slash
 	}
 	cmd.uniqueId = assignId()
 	body["name"] = cmd.Name
 	switch cmd.Type {
-	case SlashCommand:
+	case CommandKinds.Slash:
 		if cmd.Description == "" {
 			panic("Command {description} must be set")
 		}
@@ -628,7 +620,7 @@ func (cmd *Command) marshal() (
 		if cmd.AutocompleteTask != nil {
 			autocompleteBucket[cmd.uniqueId] = cmd.AutocompleteTask
 		}
-	case UserCommand:
+	case CommandKinds.User:
 		if cmd.Description != "" {
 			panic("Command {description} must not be set for user commands")
 		}
@@ -641,7 +633,7 @@ func (cmd *Command) marshal() (
 		if len(cmd.subcommandGroups) > 0 {
 			panic("Command cannot have subcommand groups for user commands")
 		}
-	case MessageCommand:
+	case CommandKinds.Message:
 		if cmd.Description != "" {
 			panic("Command {description} must not be set for message commands")
 		}

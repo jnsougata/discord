@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var s = state{}
+var shared = state{}
 
 type sharding struct {
 	URL               string `json:"url"`
@@ -32,7 +32,8 @@ type runtime struct {
 	} `json:"application"`
 }
 
-type ws struct {
+type socket struct {
+	own              *Bot
 	locked           bool
 	sequence         int
 	intent           int
@@ -43,7 +44,6 @@ type ws struct {
 	sessionId        string
 	interval         float64
 	presence         Presence
-	self             *Bot
 	secret           string
 	queue            []Command
 	commands         map[string]interface{}
@@ -53,29 +53,29 @@ type ws struct {
 	runtimeMatrices  runtime
 }
 
-func (sock *ws) gateway() string {
+func (ws *socket) gateway() string {
 	version := 11
 	encoding := "json"
 	info := sharding{}
-	r := minimalReq("GET", "/gateway/bot", nil, sock.secret)
+	r := minimalReq("GET", "/gateway/bot", nil, ws.secret)
 	resp := r.fire()
 	body, _ := io.ReadAll(resp.Body)
 	_ = json.Unmarshal(body, &info)
-	sock.shardingMatrices = info
+	ws.shardingMatrices = info
 	return fmt.Sprintf("%s?v=%d&encoding=%s", info.URL, version, encoding)
 }
 
-func (sock *ws) keepAlive(conn *websocket.Conn, dur int) {
+func (ws *socket) pacemaker(conn *websocket.Conn, dur int) {
 	for {
 		_ = conn.WriteJSON(map[string]interface{}{"op": 1, "d": 251})
-		sock.beatSent = time.Now().UnixMilli()
+		ws.beatSent = time.Now().UnixMilli()
 		time.Sleep(time.Duration(dur) * time.Millisecond)
 	}
 }
 
-func (sock *ws) identify(conn *websocket.Conn, intent int) {
+func (ws *socket) identify(conn *websocket.Conn, intent int) {
 	identification := map[string]interface{}{
-		"token":   sock.secret,
+		"token":   ws.secret,
 		"intents": intent,
 	}
 	identification["properties"] = map[string]string{
@@ -83,17 +83,17 @@ func (sock *ws) identify(conn *websocket.Conn, intent int) {
 		"browser": "discord",
 		"device":  "discord",
 	}
-	if sock.presence.Activity.Name != "" {
-		identification["presence"] = sock.presence.Marshal()
+	if ws.presence.Activity.Name != "" {
+		identification["presence"] = ws.presence.Marshal()
 	}
-	if sock.presence.OnMobile {
+	if ws.presence.OnMobile {
 		identification["properties"].(map[string]string)["browser"] = "Discord iOS"
 	}
 	payload := map[string]interface{}{"op": 2, "d": identification}
 	_ = conn.WriteJSON(payload)
 }
 
-func (sock *ws) registerCommand(com Command, applicationId string) {
+func (ws *socket) registerCommand(com Command, applicationId string) {
 	var route string
 	data, hook, guildId := com.marshal()
 	if guildId != 0 {
@@ -101,14 +101,14 @@ func (sock *ws) registerCommand(com Command, applicationId string) {
 	} else {
 		route = fmt.Sprintf("/applications/%s/commands", applicationId)
 	}
-	r := minimalReq("POST", route, data, sock.secret)
+	r := minimalReq("POST", route, data, ws.secret)
 	d := map[string]interface{}{}
 	body, _ := io.ReadAll(r.fire().Body)
 	_ = json.Unmarshal(body, &d)
 	_, ok := d["id"]
 	if ok {
 		commandId := d["id"].(string)
-		sock.commands[commandId] = hook
+		ws.commands[commandId] = hook
 		sc, there := subcommandBucket[com.uniqueId]
 		if there {
 			subcommandBucket[commandId] = sc
@@ -124,7 +124,7 @@ func (sock *ws) registerCommand(com Command, applicationId string) {
 	}
 }
 
-func (sock *ws) requestMembers(conn *websocket.Conn, guildId string) {
+func (ws *socket) requestMembers(conn *websocket.Conn, guildId string) {
 	_ = conn.WriteJSON(map[string]interface{}{
 		"op": 8,
 		"d": map[string]interface{}{
@@ -135,11 +135,11 @@ func (sock *ws) requestMembers(conn *websocket.Conn, guildId string) {
 	})
 }
 
-func (sock *ws) run(token string) {
-	s.Guilds = make(map[string]*Guild)
-	s.Users = make(map[string]*User)
-	s.Token = token
-	conn, _, err := websocket.DefaultDialer.Dial(sock.gateway(), nil)
+func (ws *socket) run(token string) {
+	shared.Guilds = make(map[string]*Guild)
+	shared.Users = make(map[string]*User)
+	shared.Token = token
+	conn, _, err := websocket.DefaultDialer.Dial(ws.gateway(), nil)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -154,129 +154,129 @@ func (sock *ws) run(token string) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		sock.sequence = wsmsg.Sequence
-		if sock.listeners.OnSocketReceive != nil {
-			go sock.listeners.OnSocketReceive(wsmsg)
+		ws.sequence = wsmsg.Sequence
+		if ws.listeners.OnSocketReceive != nil {
+			go ws.listeners.OnSocketReceive(wsmsg)
 		}
 		r := runtime{}
 		switch wsmsg.Event {
 		case string(OnReady):
-			sock.lazyGuilds = map[string]bool{}
+			ws.lazyGuilds = map[string]bool{}
 			ba, _ := json.Marshal(wsmsg.Data)
 			_ = json.Unmarshal(ba, &r)
-			sock.runtimeMatrices = r
+			ws.runtimeMatrices = r
 			for _, guild := range r.Guilds.([]interface{}) {
 				id := guild.(map[string]interface{})["id"].(string)
-				sock.lazyGuilds[id] = true
+				ws.lazyGuilds[id] = true
 			}
-			for _, cmd := range sock.queue {
-				go sock.registerCommand(cmd, r.Application.Id)
+			for _, cmd := range ws.queue {
+				go ws.registerCommand(cmd, r.Application.Id)
 			}
-			sock.self = converter{
-				state:   &s,
+			ws.own = converter{
+				state:   &shared,
 				payload: wsmsg.Data["user"].(map[string]interface{}),
 			}.Bot()
-			sock.self.Latency = sock.latency
-			sock.locked = false
-			if sock.listeners.OnReady != nil {
-				go sock.listeners.OnReady(*sock.self)
+			ws.own.Latency = ws.latency
+			ws.locked = false
+			if ws.listeners.OnReady != nil {
+				go ws.listeners.OnReady(*ws.own)
 			} else {
 				fmt.Println(fmt.Sprintf("Logged in as %s#%s (Id:%s)",
-					sock.self.Username, sock.self.Discriminator, sock.self.Id))
+					ws.own.Username, ws.own.Discriminator, ws.own.Id))
 				fmt.Println("---------")
 			}
 		case string(OnGuildJoin):
-			g := converter{state: &s, payload: wsmsg.Data}.Guild()
-			g.clientId = sock.self.Id
-			s.Guilds[g.Id] = g
-			sock.self.Guilds = s.Guilds
-			if sock.memoize {
-				sock.requestMembers(conn, g.Id)
+			g := converter{state: &shared, payload: wsmsg.Data}.Guild()
+			g.clientId = ws.own.Id
+			shared.Guilds[g.Id] = g
+			ws.own.Guilds = shared.Guilds
+			if ws.memoize {
+				ws.requestMembers(conn, g.Id)
 			}
-			_, ok := sock.lazyGuilds[g.Id]
-			if !ok && sock.listeners.OnGuildJoin != nil {
-				go sock.listeners.OnGuildJoin(*sock.self, *g)
+			_, ok := ws.lazyGuilds[g.Id]
+			if !ok && ws.listeners.OnGuildJoin != nil {
+				go ws.listeners.OnGuildJoin(*ws.own, *g)
 			}
 		case string(OnGuildMembersChunk):
 			id := wsmsg.Data["guild_id"].(string)
 			members := wsmsg.Data["members"].([]interface{})
-			s.Guilds[id].fillMembers(members)
-			sock.self.Users = s.Users
+			shared.Guilds[id].fillMembers(members)
+			ws.own.Users = shared.Users
 		default:
-			sock.processEvents(wsmsg.Event, wsmsg.Data)
+			ws.handleDispatch(wsmsg.Event, wsmsg.Data)
 		}
 
 		switch wsmsg.OP {
 
 		case 10:
-			sock.interval = wsmsg.Data["heartbeat_interval"].(float64)
-			sock.identify(conn, sock.intent)
-			go sock.keepAlive(conn, int(sock.interval))
+			ws.interval = wsmsg.Data["heartbeat_interval"].(float64)
+			ws.identify(conn, ws.intent)
+			go ws.pacemaker(conn, int(ws.interval))
 		case 11:
-			sock.beatAck = time.Now().UnixMilli()
-			sock.latency = sock.beatAck - sock.beatSent
-			if sock.self != nil {
-				sock.self.Latency = sock.latency
+			ws.beatAck = time.Now().UnixMilli()
+			ws.latency = ws.beatAck - ws.beatSent
+			if ws.own != nil {
+				ws.own.Latency = ws.latency
 			}
 		case 7:
 			_ = conn.WriteJSON(map[string]interface{}{
 				"op": 6,
 				"d": map[string]interface{}{
 					"token":      token,
-					"sequence":   sock.sequence,
-					"session_id": sock.runtimeMatrices.SessionId,
+					"sequence":   ws.sequence,
+					"session_id": ws.runtimeMatrices.SessionId,
 				},
 			})
 		case 9:
-			sock.identify(conn, sock.intent)
+			ws.identify(conn, ws.intent)
 		}
 	}
 }
 
-func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
-	if sock.locked {
+func (ws *socket) handleDispatch(dispatch string, data map[string]interface{}) {
+	if ws.locked {
 		return
 	}
-	conv := converter{state: &s, payload: data}
+	conv := converter{state: &shared, payload: data}
 
 	switch dispatch {
 
 	case string(OnMessage):
-		if sock.listeners.OnMessage != nil {
-			go sock.listeners.OnMessage(*sock.self, *conv.Message())
+		if ws.listeners.OnMessage != nil {
+			go ws.listeners.OnMessage(*ws.own, *conv.Message())
 		}
 
 	case string(OnGuildLeave):
 		id := data["id"].(string)
-		_, ok := sock.lazyGuilds[id]
+		_, ok := ws.lazyGuilds[id]
 		if ok {
-			delete(sock.lazyGuilds, id)
+			delete(ws.lazyGuilds, id)
 		}
-		if sock.listeners.OnGuildLeave != nil {
-			cached, exists := s.Guilds[id]
+		if ws.listeners.OnGuildLeave != nil {
+			cached, exists := shared.Guilds[id]
 			if exists {
-				go sock.listeners.OnGuildLeave(*sock.self, *cached)
-				delete(s.Guilds, id)
+				go ws.listeners.OnGuildLeave(*ws.own, *cached)
+				delete(shared.Guilds, id)
 			} else {
 				var guild Guild
 				md, _ := json.Marshal(data)
 				_ = json.Unmarshal(md, &guild)
-				go sock.listeners.OnGuildLeave(*sock.self, guild)
+				go ws.listeners.OnGuildLeave(*ws.own, guild)
 			}
 		}
 
 	case string(OnInteraction):
-		if sock.listeners.OnInteraction != nil {
-			go sock.listeners.OnInteraction(*sock.self, *conv.Interaction())
+		if ws.listeners.OnInteraction != nil {
+			go ws.listeners.OnInteraction(*ws.own, *conv.Interaction())
 		}
 		ctx := conv.Context()
 		switch ctx.Type {
 		case 1:
 			// interaction ping
 		case 2:
-			if task, ok := sock.commands[ctx.Data.Id]; ok {
+			if task, ok := ws.commands[ctx.Data.Id]; ok {
 				switch ctx.Data.Type {
-				case int(SlashCommand):
+				case int(CommandKinds.Slash):
 					if len(ctx.Data.Options) > 0 && int(ctx.Data.Options[0].Type) == 1 {
 						type subcommand struct {
 							Name    string   `json:"name"`
@@ -287,32 +287,32 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 						ds, _ := json.Marshal(d)
 						var subcommands []subcommand
 						_ = json.Unmarshal(ds, &subcommands)
-						scos := buildResolved(subcommands[0].Options, ctx.Data.Resolved, &s)
+						scos := buildResolved(subcommands[0].Options, ctx.Data.Resolved, &shared)
 						if sc, okz := subcommandBucket[ctx.Data.Id]; okz {
 							scTask, exists := sc.(map[string]interface{})[ctx.Data.Options[0].Name]
 							if exists {
 								hook := scTask.(func(bot Bot, ctx Context, options ResolvedOptions))
-								go hook(*sock.self, *ctx, *scos)
+								go hook(*ws.own, *ctx, *scos)
 							}
 						}
 					} else {
 						hook := task.(func(bot Bot, ctx Context, options ResolvedOptions))
 						if hook != nil {
-							go hook(*sock.self, *ctx, ResolvedOptions{})
+							go hook(*ws.own, *ctx, ResolvedOptions{})
 						}
 					}
-				case int(UserCommand):
+				case int(CommandKinds.User):
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
-					ctx.TargetUser = *converter{state: &s, payload: rud.(map[string]interface{})}.User()
+					ctx.TargetUser = *converter{state: &shared, payload: rud.(map[string]interface{})}.User()
 					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
-					go hook(*sock.self, *ctx, nil)
-				case int(MessageCommand):
+					go hook(*ws.own, *ctx, nil)
+				case int(CommandKinds.Message):
 					target := ctx.Data.TargetId
 					rmd := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
-					ctx.TargetMessage = *converter{state: &s, payload: rmd.(map[string]interface{})}.Message()
+					ctx.TargetMessage = *converter{state: &shared, payload: rmd.(map[string]interface{})}.Message()
 					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
-					go hook(*sock.self, *ctx, nil)
+					go hook(*ws.own, *ctx, nil)
 				}
 			} else {
 				fmt.Printf("Command (%s) is not implemented.", ctx.Data.Id)
@@ -328,13 +328,13 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 				cb, ok := callbackTasks[ctx.componentData.CustomId]
 				if ok {
 					callback := cb.(func(b Bot, ctx Context))
-					go callback(*sock.self, *ctx)
+					go callback(*ws.own, *ctx)
 				}
 			case 3:
 				cb, ok := callbackTasks[ctx.componentData.CustomId]
 				if ok {
 					callback := cb.(func(b Bot, ctx Context, values ...string))
-					go callback(*sock.self, *ctx, ctx.componentData.Values...)
+					go callback(*ws.own, *ctx, ctx.componentData.Values...)
 				}
 			}
 			tmp, ok := timeoutTasks[ctx.componentData.CustomId]
@@ -342,14 +342,14 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 				onTimeoutHandler := tmp[1].(func(b Bot, ctx Context))
 				duration := tmp[0].(float64)
 				delete(timeoutTasks, ctx.componentData.CustomId)
-				go scheduleTimeoutTask(duration, *sock.self, *ctx, onTimeoutHandler)
+				go scheduleTimeoutTask(duration, *ws.own, *ctx, onTimeoutHandler)
 			}
 		case 4:
 			// handle auto-complete interaction
 		case 5:
 			callback, ok := callbackTasks[ctx.componentData.CustomId]
 			if ok {
-				go callback.(func(b Bot, ctx *Context))(*sock.self, ctx)
+				go callback.(func(b Bot, ctx *Context))(*ws.own, ctx)
 				delete(callbackTasks, ctx.componentData.CustomId)
 			}
 		default:
@@ -357,9 +357,4 @@ func (sock *ws) processEvents(dispatch string, data map[string]interface{}) {
 		}
 	default:
 	}
-}
-
-func scheduleTimeoutTask(timeout float64, user Bot, ctx Context, task func(bot Bot, ctx Context)) {
-	time.Sleep(time.Duration(timeout) * time.Second)
-	task(user, ctx)
 }
