@@ -10,17 +10,17 @@ type Option struct {
 	Type         int    `json:"type"`
 	Description  string
 	Required     bool
-	MinLength    int      // allowed for: stringOption Range(0-6000)
-	MaxLength    int      // allowed for: stringOption Range(1-6000)
-	MinValue     int      // allowed for: integerOption
-	MaxValue     int      // allowed for: integerOption
-	MaxValueNum  float64  // allowed for: numberOption
-	MinValueNum  float64  // allowed for: numberOption
-	AutoComplete bool     // allowed for: stringOption, numberOption, integerOption
-	ChannelTypes []int    // allowed for: channelOption
-	Choices      []Choice // allowed for: stringOption, integerOption, numberOption
-	Value        any      `json:"Value"`   // available only during Option parsing
-	Focused      bool     `json:"focused"` // available only during Option parsing
+	MinLength    int      // allowed for: string Option Range(0-6000)
+	MaxLength    int      // allowed for: string Option Range(1-6000)
+	MinValue     int      // allowed for: integer Option
+	MaxValue     int      // allowed for: integer Option
+	MaxValueNum  float64  // allowed for: number Option
+	MinValueNum  float64  // allowed for: number Option
+	AutoComplete bool     // allowed for: string Option, number Option, integer Option
+	ChannelTypes []int    // allowed for: channel Option
+	Choices      []Choice // allowed for: string Option, number Option, integer Option
+	Value        any      `json:"Value"`   // do not use this field
+	Focused      bool     `json:"focused"` // do not use this field
 }
 
 func (o *Option) marshal() map[string]interface{} {
