@@ -1,6 +1,6 @@
 package discord
 
-type Draft struct {
+type ChannelMessage struct {
 	Content        string
 	Embed          Embed
 	Embeds         []Embed
@@ -14,24 +14,24 @@ type Draft struct {
 	//AllowedMentions []string
 }
 
-func (d *Draft) marshal() (map[string]interface{}, error) {
+func (msg *ChannelMessage) marshal() (map[string]interface{}, error) {
 	body := map[string]interface{}{}
-	if d.Content != "" {
-		body["content"] = d.Content
+	if msg.Content != "" {
+		body["content"] = msg.Content
 	}
-	if checkTrueEmbed(d.Embed) {
-		d.Embeds = append([]Embed{d.Embed}, d.Embeds...)
+	if checkTrueEmbed(msg.Embed) {
+		msg.Embeds = append([]Embed{msg.Embed}, msg.Embeds...)
 	}
-	for i, em := range d.Embeds {
+	for i, em := range msg.Embeds {
 		if !checkTrueEmbed(em) {
-			d.Embeds = append(d.Embeds[:i], d.Embeds[i+1:]...)
+			msg.Embeds = append(msg.Embeds[:i], msg.Embeds[i+1:]...)
 		}
 	}
-	if len(d.Embeds) > 10 {
-		d.Embeds = d.Embeds[:10]
+	if len(msg.Embeds) > 10 {
+		msg.Embeds = msg.Embeds[:10]
 	}
 	body["embeds"] = []map[string]interface{}{}
-	for _, em := range d.Embeds {
+	for _, em := range msg.Embeds {
 		emd, err := em.marshal()
 		if err != nil {
 			return nil, err
@@ -39,11 +39,11 @@ func (d *Draft) marshal() (map[string]interface{}, error) {
 			body["embeds"] = append(body["embeds"].([]map[string]interface{}), emd)
 		}
 	}
-	if checkTrueFile(d.File) {
-		d.Files = append([]File{d.File}, d.Files...)
+	if checkTrueFile(msg.File) {
+		msg.Files = append([]File{msg.File}, msg.Files...)
 	}
 	body["attachments"] = []map[string]interface{}{}
-	for i, f := range d.Files {
+	for i, f := range msg.Files {
 		if checkTrueFile(f) {
 			a := map[string]interface{}{
 				"id":          i,
@@ -52,7 +52,7 @@ func (d *Draft) marshal() (map[string]interface{}, error) {
 			}
 			body["attachments"] = append(body["attachments"].([]map[string]interface{}), a)
 		} else {
-			d.Files = append(d.Files[:i], d.Files[i+1:]...)
+			msg.Files = append(msg.Files[:i], msg.Files[i+1:]...)
 		}
 	}
 	return body, nil

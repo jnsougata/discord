@@ -1,78 +1,87 @@
 package discord
 
-type commandKind int
-type commandKinds struct {
-	Slash   commandKind
-	User    commandKind
-	Message commandKind
-}
+type (
+	commandTypes struct {
+		Slash   int
+		User    int
+		Message int
+	}
 
-type ChannelKind int
-type channelKinds struct {
-	Text          ChannelKind
-	DM            ChannelKind
-	Voice         ChannelKind
-	GroupDM       ChannelKind
-	Category      ChannelKind
-	News          ChannelKind
-	NewsThread    ChannelKind
-	PublicThread  ChannelKind
-	PrivateThread ChannelKind
-	StageVoice    ChannelKind
-	Directory     ChannelKind
-	Forum         ChannelKind
-}
+	channelTypes struct {
+		Text          int
+		DM            int
+		Voice         int
+		GroupDM       int
+		Category      int
+		News          int
+		NewsThread    int
+		PublicThread  int
+		PrivateThread int
+		StageVoice    int
+		Directory     int
+		Forum         int
+	}
 
-type buttonStyle int
-type buttonStyles struct {
-	Blue  buttonStyle
-	Green buttonStyle
-	Red   buttonStyle
-	Grey  buttonStyle
-	Link  buttonStyle
-}
+	buttonStyles struct {
+		Blue  int
+		Green int
+		Red   int
+		Grey  int
+		Link  int
+	}
 
-type optionKind int
-
-const (
-	stringOption      optionKind = 3
-	integerOption     optionKind = 4
-	booleanOption     optionKind = 5
-	userOption        optionKind = 6
-	channelOption     optionKind = 7
-	roleOption        optionKind = 8
-	mentionableOption optionKind = 9
-	numberOption      optionKind = 10
-	attachmentOption  optionKind = 11
+	optionKind struct {
+		String      int
+		Integer     int
+		Boolean     int
+		User        int
+		Channel     int
+		Role        int
+		Mentionable int
+		Number      int
+		Attachment  int
+	}
 )
 
-// exported variables
+var (
+	OptionTypes = optionKind{
+		String:      3,
+		Integer:     4,
+		Boolean:     5,
+		User:        6,
+		Channel:     7,
+		Role:        8,
+		Mentionable: 9,
+		Number:      10,
+		Attachment:  11,
+	}
 
-var CommandKinds = commandKinds{
-	Slash:   commandKind(1),
-	User:    commandKind(2),
-	Message: commandKind(3),
-}
+	ChannelTypes = channelTypes{
+		Text:          0,
+		DM:            1,
+		Voice:         2,
+		GroupDM:       3,
+		Category:      4,
+		News:          5,
+		NewsThread:    10,
+		PublicThread:  11,
+		PrivateThread: 12,
+		StageVoice:    13,
+		Directory:     14,
+		Forum:         15,
+	}
 
-var ChannelKinds = channelKinds{
-	Text:          ChannelKind(0),
-	DM:            ChannelKind(1),
-	Voice:         ChannelKind(2),
-	GroupDM:       ChannelKind(3),
-	Category:      ChannelKind(4),
-	News:          ChannelKind(5),
-	NewsThread:    ChannelKind(10),
-	PublicThread:  ChannelKind(11),
-	PrivateThread: ChannelKind(12),
-	StageVoice:    ChannelKind(13),
-	Directory:     ChannelKind(14),
-	Forum:         ChannelKind(15),
-}
+	CommandTypes = commandTypes{
+		Slash:   1,
+		User:    2,
+		Message: 3,
+	}
 
-var ButtonStyles = buttonStyles{
-	Blue:  buttonStyle(1),
-	Grey:  buttonStyle(2),
-	Green: buttonStyle(3),
-	Red:   buttonStyle(4),
-	Link:  buttonStyle(5),
-}
+	ButtonStyles = buttonStyles{
+		Blue:  1,
+		Grey:  2,
+		Green: 3,
+		Red:   4,
+		Link:  5,
+	}
+)

@@ -38,7 +38,7 @@ type Message struct {
 	state              *state
 }
 
-func (m *Message) Reply(message Draft) (Message, error) {
+func (m *Message) Reply(message ChannelMessage) (Message, error) {
 	body, err := message.marshal()
 	body["message_reference"] = map[string]interface{}{"message_id": m.Id}
 	path := fmt.Sprintf("/channels/%s/messages", m.ChannelId)

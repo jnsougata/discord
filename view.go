@@ -7,7 +7,7 @@ var timeoutTasks = map[string][]interface{}{}
 
 type Button struct {
 	customId string
-	Style    buttonStyle
+	Style    int
 	Label    string
 	Emoji    PartialEmoji
 	URL      string
@@ -59,13 +59,13 @@ func (so *SelectOption) marshal() (map[string]interface{}, error) {
 	if so.Label != "" && len(so.Label) <= 100 {
 		op["label"] = so.Label
 	} else {
-		return nil, errors.New("name of the option can contain max 100 characters and must not be empty")
+		return nil, errors.New("name of the Option can contain max 100 characters and must not be empty")
 	}
 	op["value"] = so.Value
 	if len(so.Description) <= 100 {
 		op["description"] = so.Description
 	} else {
-		return nil, errors.New("description of the select option can contain max 100 characters")
+		return nil, errors.New("description of the select Option can contain max 100 characters")
 	}
 	if so.Emoji.Id != "" {
 		op["emoji"] = so.Emoji
@@ -78,7 +78,7 @@ func (so *SelectOption) marshal() (map[string]interface{}, error) {
 
 type SelectMenu struct {
 	customId    string
-	Options     []SelectOption // max 25 options
+	Options     []SelectOption // max 25 Options
 	Placeholder string         // max 100 characters
 	MinValues   int            // default: 0
 	MaxValues   int            // default: 1
@@ -115,13 +115,13 @@ func (s *SelectMenu) marshal() (map[string]interface{}, error) {
 	if len(s.Options) > 25 {
 		s.Options = s.Options[:25]
 	}
-	menu["options"] = []map[string]interface{}{}
+	menu["Options"] = []map[string]interface{}{}
 	for _, option := range s.Options {
 		op, err := option.marshal()
 		if err != nil {
 			return nil, err
 		}
-		menu["options"] = append(menu["options"].([]map[string]interface{}), op)
+		menu["Options"] = append(menu["Options"].([]map[string]interface{}), op)
 	}
 	return menu, nil
 }
@@ -156,7 +156,7 @@ func (v *View) AddButtons(buttons ...Button) error {
 func (v *View) AddSelectMenu(menu SelectMenu) error {
 	if len(v.rows) < 5 {
 		if len(menu.Options) == 0 {
-			return errors.New("select menu must have at least one option")
+			return errors.New("select menu must have at least one Option")
 		}
 		row := actionRow{SelectMenu: menu}
 		v.rows = append(v.rows, row)

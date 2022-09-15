@@ -102,12 +102,12 @@ func (ws *socket) registerCommand(com Command, applicationId string) {
 		route = fmt.Sprintf("/applications/%s/commands", applicationId)
 	}
 	r := minimalReq("POST", route, data, ws.secret)
-	d := map[string]interface{}{}
+	resp := map[string]interface{}{}
 	body, _ := io.ReadAll(r.fire().Body)
-	_ = json.Unmarshal(body, &d)
-	_, ok := d["id"]
+	_ = json.Unmarshal(body, &resp)
+	_, ok := resp["id"]
 	if ok {
-		commandId := d["id"].(string)
+		commandId := resp["id"].(string)
 		ws.commands[commandId] = hook
 		sc, there := subcommandBucket[com.uniqueId]
 		if there {
@@ -120,7 +120,8 @@ func (ws *socket) registerCommand(com Command, applicationId string) {
 			delete(groupBucket, com.uniqueId)
 		}
 	} else {
-		panic(fmt.Sprintf("Failed to register command {%s}. Message: %s", com.Name, d["message"]))
+		message := resp["message"]
+		panic(fmt.Sprintf("Failed to register command {%s}. Message: %s", com.Name, message))
 	}
 }
 
@@ -276,14 +277,14 @@ func (ws *socket) handleDispatch(dispatch string, data map[string]interface{}) {
 		case 2:
 			if task, ok := ws.commands[ctx.Data.Id]; ok {
 				switch ctx.Data.Type {
-				case int(CommandKinds.Slash):
+				case CommandTypes.Slash:
 					if len(ctx.Data.Options) > 0 && int(ctx.Data.Options[0].Type) == 1 {
 						type subcommand struct {
 							Name    string   `json:"name"`
-							Options []option `json:"options"`
+							Options []Option `json:"Options"`
 							Type    int      `json:"type"`
 						}
-						d := ctx.data["data"].(map[string]interface{})["options"].([]interface{})
+						d := ctx.data["data"].(map[string]interface{})["Options"].([]interface{})
 						ds, _ := json.Marshal(d)
 						var subcommands []subcommand
 						_ = json.Unmarshal(ds, &subcommands)
@@ -301,17 +302,17 @@ func (ws *socket) handleDispatch(dispatch string, data map[string]interface{}) {
 							go hook(*ws.own, *ctx, ResolvedOptions{})
 						}
 					}
-				case int(CommandKinds.User):
+				case CommandTypes.User:
 					target := ctx.Data.TargetId
 					rud := ctx.Data.Resolved["users"].(map[string]interface{})[target]
 					ctx.TargetUser = *converter{state: &shared, payload: rud.(map[string]interface{})}.User()
-					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
+					hook := task.(func(bot Bot, ctx Context, _ map[string]Option))
 					go hook(*ws.own, *ctx, nil)
-				case int(CommandKinds.Message):
+				case CommandTypes.Message:
 					target := ctx.Data.TargetId
 					rmd := ctx.Data.Resolved["messages"].(map[string]interface{})[target]
 					ctx.TargetMessage = *converter{state: &shared, payload: rmd.(map[string]interface{})}.Message()
-					hook := task.(func(bot Bot, ctx Context, _ map[string]option))
+					hook := task.(func(bot Bot, ctx Context, _ map[string]Option))
 					go hook(*ws.own, *ctx, nil)
 				}
 			} else {

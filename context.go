@@ -29,7 +29,7 @@ type Data struct {
 	Name     string                 `json:"name"`
 	Type     int                    `json:"type"`
 	Resolved map[string]interface{} `json:"resolved"`
-	Options  []option               `json:"options"`
+	Options  []Option               `json:"Options"`
 	GuildId  string                 `json:"guild_id"`
 	TargetId string                 `json:"target_id"`
 }
@@ -110,7 +110,7 @@ type Context struct {
 	Guild          Guild
 	Author         Member
 	//token          string
-	commandData   []option
+	commandData   []Option
 	componentData componentData
 	data          map[string]interface{}
 	state         *state
@@ -126,7 +126,7 @@ func (c *Context) OriginalResponse() Message {
 	return m
 }
 
-func (c *Context) Send(response Response) error {
+func (c *Context) SendResponse(response *Response) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body, err := response.marshal()
 	r := multipartReq("POST", path, map[string]interface{}{"type": 4, "data": body}, "", response.Files...)
@@ -134,7 +134,7 @@ func (c *Context) Send(response Response) error {
 	return err
 }
 
-func (c *Context) Defer(ephemeral bool) {
+func (c *Context) DeferResponse(ephemeral bool) {
 	body := map[string]interface{}{}
 	if c.Type == 2 {
 		body["type"] = 5
@@ -149,7 +149,7 @@ func (c *Context) Defer(ephemeral bool) {
 	go r.fire()
 }
 
-func (c *Context) SendModal(modal Modal) error {
+func (c *Context) ModalResponse(modal *Modal) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", c.Id, c.Token)
 	body, err := modal.marshal()
 	r := minimalReq("POST", path, body, "")
@@ -157,7 +157,7 @@ func (c *Context) SendModal(modal Modal) error {
 	return err
 }
 
-func (c *Context) SendFollowup(response Response) (Message, error) {
+func (c *Context) FollowupResponse(response *Response) (Message, error) {
 	path := fmt.Sprintf("/webhooks/%s/%s", c.ApplicationId, c.Token)
 	body, err := response.marshal()
 	r := multipartReq("POST", path, body, "", response.Files...)
@@ -172,7 +172,7 @@ func (c *Context) SendFollowup(response Response) (Message, error) {
 	return <-m, err
 }
 
-func (c *Context) Edit(response Response) error {
+func (c *Context) EditResponse(response *Response) error {
 	body, err := response.marshal()
 	if len(response.Embeds) == 0 {
 		body["embeds"] = []map[string]interface{}{}
@@ -196,7 +196,7 @@ func (c *Context) Edit(response Response) error {
 	return err
 }
 
-func (c *Context) Delete() {
+func (c *Context) DeleteResponse() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", c.ApplicationId, c.Token)
 	r := minimalReq("DELETE", path, nil, "")
 	go r.fire()

@@ -39,7 +39,7 @@ type Channel struct {
 	state                      *state
 }
 
-func (c *Channel) Send(draft Draft) (Message, error) {
+func (c *Channel) Send(draft *ChannelMessage) (Message, error) {
 	body, err := draft.marshal()
 	path := fmt.Sprintf("/channels/%s/messages", c.Id)
 	r := multipartReq("POST", path, body, c.state.Token, draft.Files...)

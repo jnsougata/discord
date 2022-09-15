@@ -37,7 +37,7 @@ func (i *Interaction) OriginalResponse() Message {
 	return m
 }
 
-func (i *Interaction) Send(response Response) error {
+func (i *Interaction) SendResponse(response *Response) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	body, err := response.marshal()
 	payload := map[string]interface{}{"type": 4, "data": body}
@@ -47,7 +47,7 @@ func (i *Interaction) Send(response Response) error {
 	return err
 }
 
-func (i *Interaction) Defer(ephemeral bool) {
+func (i *Interaction) DeferResponse(ephemeral bool) {
 	body := map[string]interface{}{}
 	if i.Type == 2 {
 		body["type"] = 5
@@ -62,7 +62,7 @@ func (i *Interaction) Defer(ephemeral bool) {
 	go r.fire()
 }
 
-func (i *Interaction) SendModal(modal Modal) error {
+func (i *Interaction) ModalResponse(modal *Modal) error {
 	path := fmt.Sprintf("/interactions/%s/%s/callback", i.Id, i.Token)
 	body, err := modal.marshal()
 	r := minimalReq("POST", path, body, "")
@@ -70,7 +70,7 @@ func (i *Interaction) SendModal(modal Modal) error {
 	return err
 }
 
-func (i *Interaction) SendFollowup(response Response) (Message, error) {
+func (i *Interaction) FollowupResponse(response *Response) (Message, error) {
 	path := fmt.Sprintf("/webhooks/%s/%s", i.ApplicationId, i.Token)
 	body, err := response.marshal()
 	r := multipartReq("POST", path, body, "", response.Files...)
@@ -85,7 +85,7 @@ func (i *Interaction) SendFollowup(response Response) (Message, error) {
 	return <-m, err
 }
 
-func (i *Interaction) Edit(response Response) error {
+func (i *Interaction) EditResponse(response *Response) error {
 	body, err := response.marshal()
 	if len(response.Embeds) == 0 {
 		body["embeds"] = []map[string]interface{}{}
@@ -109,7 +109,7 @@ func (i *Interaction) Edit(response Response) error {
 	return err
 }
 
-func (i *Interaction) Delete() {
+func (i *Interaction) DeleteResponse() {
 	path := fmt.Sprintf("/webhooks/%s/%s/messages/@original", i.ApplicationId, i.Token)
 	r := minimalReq("DELETE", path, nil, "")
 	go r.fire()
