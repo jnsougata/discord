@@ -34,10 +34,10 @@ func (a Asset) URL() string {
 
 func (a Asset) CustomURL(size int64, format string) string {
 	if format == "" {
-		panic("Asset.Format is empty")
+		format = "png"
 	}
 	if size == 0 {
-		panic("Asset.Size 0 is invalid")
+		size = 1024
 	}
 	if a.Hash != "" && a.Extras != "" {
 		return fmt.Sprintf("%s/%s/%s.%s?size=%v", base, a.Extras, a.Hash, format, size)

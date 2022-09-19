@@ -25,9 +25,9 @@ func (b *Button) marshal() (map[string]interface{}, error) {
 		"custom_id": b.customId,
 	}
 	if int(b.Style) != 0 {
-		btn["style"] = int(b.Style)
+		btn["style"] = b.Style
 	} else {
-		btn["style"] = int(ButtonStyles.Blue)
+		btn["style"] = ButtonStyles.Blue
 	}
 	if b.Label != "" {
 		btn["label"] = b.Label
